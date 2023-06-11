@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/readactedworks/go-http-server/api/model"
-	"github.com/readactedworks/go-http-server/pkg/firedb/references"
+	"github.com/clintrovert/go-playground/api/model"
+	"github.com/clintrovert/go-playground/pkg/firedb/references"
 )
 
 const (

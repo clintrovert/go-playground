@@ -5,10 +5,10 @@ import (
 	"testing"
 
 	"firebase.google.com/go/db"
+	"github.com/clintrovert/go-playground/api/model"
+	"github.com/clintrovert/go-playground/internal/test/mocks"
+	"github.com/clintrovert/go-playground/internal/test/utils"
 	"github.com/golang/mock/gomock"
-	"github.com/readactedworks/go-http-server/api/model"
-	"github.com/readactedworks/go-http-server/internal/test/mocks"
-	"github.com/readactedworks/go-http-server/internal/test/utils"
 	"github.com/stretchr/testify/assert"
 )
 

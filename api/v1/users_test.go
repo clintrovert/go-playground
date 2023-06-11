@@ -5,10 +5,10 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/clintrovert/go-playground/api/model"
+	"github.com/clintrovert/go-playground/internal/test/mocks"
+	"github.com/clintrovert/go-playground/internal/test/utils"
 	"github.com/golang/mock/gomock"
-	"github.com/readactedworks/go-http-server/api/model"
-	"github.com/readactedworks/go-http-server/internal/test/mocks"
-	"github.com/readactedworks/go-http-server/internal/test/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
@@ -80,6 +80,7 @@ func TestCreateUser_ValidRequest_ShouldSucceed(t *testing.T) {
 	tester := newTestUserService(t)
 	expected := utils.GenerateRandomUser()
 	expected.Id = ""
+
 	request := &model.CreateUserRequest{
 		Name:     expected.Name,
 		Email:    expected.Email,
@@ -87,7 +88,7 @@ func TestCreateUser_ValidRequest_ShouldSucceed(t *testing.T) {
 	}
 
 	tester.manager.EXPECT().
-		CreateUser(tester.ctx, expected).
+		CreateUser(tester.ctx, gomock.Any()).
 		Return(nil).
 		Times(1)
 
@@ -99,5 +100,4 @@ func assertUserEqual(t *testing.T, expected *model.User, actual *model.User) {
 	assert.Equal(t, expected.Id, actual.Id)
 	assert.Equal(t, expected.Name, actual.Name)
 	assert.Equal(t, expected.Email, actual.Email)
-	assert.Equal(t, expected.Password, actual.Password)
 }

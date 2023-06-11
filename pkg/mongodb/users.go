@@ -5,7 +5,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/readactedworks/go-http-server/api/model"
+	"github.com/clintrovert/go-playground/api/model"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"

@@ -3,7 +3,7 @@ package utils
 import (
 	"math/rand"
 
-	"github.com/readactedworks/go-http-server/api/model"
+	"github.com/clintrovert/go-playground/api/model"
 )
 
 var alphabet = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")

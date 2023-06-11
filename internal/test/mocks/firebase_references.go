@@ -9,8 +9,8 @@ import (
 	reflect "reflect"
 
 	"firebase.google.com/go/db"
+	"github.com/clintrovert/go-playground/pkg/firedb/references"
 	gomock "github.com/golang/mock/gomock"
-	references "github.com/readactedworks/go-http-server/pkg/firedb/references"
 )
 
 // MockCreator is a mock of Creator interface.

@@ -3,10 +3,11 @@ package v1
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/mail"
 	"strings"
 
-	"github.com/readactedworks/go-http-server/api/model"
+	"github.com/clintrovert/go-playground/api/model"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
@@ -65,6 +66,10 @@ func (s *UserService) GetUser(
 	ctx context.Context,
 	request *model.GetUserRequest,
 ) (*model.GetUserResponse, error) {
+	if err := validateContext(ctx); err != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+
 	if err := validateGetUserRequest(request); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -91,11 +96,15 @@ func (s *UserService) CreateUser(
 	ctx context.Context,
 	request *model.CreateUserRequest,
 ) (*model.CreateUserResponse, error) {
+	if err := validateContext(ctx); err != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+
 	if err := validateCreateUserRequest(request); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword(
+	encrypted, err := bcrypt.GenerateFromPassword(
 		[]byte(strings.TrimSpace(request.Password)),
 		bcrypt.DefaultCost,
 	)
@@ -107,7 +116,7 @@ func (s *UserService) CreateUser(
 	user := &model.User{
 		Name:     strings.TrimSpace(request.Name),
 		Email:    strings.TrimSpace(request.Email),
-		Password: string(hashedPassword),
+		Password: string(encrypted),
 	}
 
 	if err = s.db.CreateUser(ctx, user); err != nil {
@@ -125,6 +134,10 @@ func (s *UserService) UpdateUser(
 	ctx context.Context,
 	request *model.UpdateUserRequest,
 ) (*model.UpdateUserResponse, error) {
+	if err := validateContext(ctx); err != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+
 	if err := validateUpdateUserRequest(request); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -153,6 +166,10 @@ func (s *UserService) DeleteUser(
 	ctx context.Context,
 	request *model.DeleteUserRequest,
 ) (*model.DeleteUserResponse, error) {
+	if err := validateContext(ctx); err != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+
 	if err := validateDeleteUserRequest(request); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -220,5 +237,12 @@ func validateDeleteUserRequest(request *model.DeleteUserRequest) error {
 		return ErrUserIdMissing
 	}
 
+	return nil
+}
+
+func validateContext(ctx context.Context) error {
+	if ctx == nil {
+		return fmt.Errorf("context is required")
+	}
 	return nil
 }

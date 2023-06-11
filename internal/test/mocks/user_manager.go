@@ -8,8 +8,8 @@ import (
 	context "context"
 	reflect "reflect"
 
+	"github.com/clintrovert/go-playground/api/model"
 	gomock "github.com/golang/mock/gomock"
-	model "github.com/readactedworks/go-http-server/api/model"
 )
 
 // MockUserDataManager is a mock of UserDataManager interface.

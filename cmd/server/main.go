@@ -6,9 +6,9 @@ import (
 	"log"
 	"net"
 
+	"github.com/clintrovert/go-playground/internal/server"
 	metrics "github.com/grpc-ecosystem/go-grpc-middleware/providers/openmetrics/v2"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/readactedworks/go-http-server/internal/server"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"

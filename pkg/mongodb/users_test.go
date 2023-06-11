@@ -3,9 +3,9 @@ package mongodb
 import (
 	"testing"
 
+	"github.com/clintrovert/go-playground/internal/test/mocks"
+	"github.com/clintrovert/go-playground/internal/test/utils"
 	"github.com/golang/mock/gomock"
-	"github.com/readactedworks/go-http-server/internal/test/mocks"
-	"github.com/readactedworks/go-http-server/internal/test/utils"
 	"github.com/stretchr/testify/assert"
 )
 

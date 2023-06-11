@@ -1,4 +1,4 @@
-module github.com/readactedworks/go-http-server
+module github.com/clintrovert/go-playground
 
 go 1.20
 
