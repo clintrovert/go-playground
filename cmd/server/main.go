@@ -8,6 +8,7 @@ import (
 
 	"github.com/clintrovert/go-playground/internal/server"
 	metrics "github.com/grpc-ecosystem/go-grpc-middleware/providers/openmetrics/v2"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -28,12 +29,17 @@ func main() {
 	ctx := context.Background()
 
 	srv := grpc.NewServer(
-		grpc.UnaryInterceptor(unaryInterceptor),
-		grpc.StreamInterceptor(streamInterceptor),
+		grpc.ChainUnaryInterceptor(
+			auth.UnaryServerInterceptor(server.Authorize),
+			unaryInterceptor,
+		),
+		grpc.ChainStreamInterceptor(
+			auth.StreamServerInterceptor(server.Authorize),
+			streamInterceptor,
+		),
 	)
 
 	registerUserService(ctx, srv, mongoDb)
-
 	//registerServiceMetrics(server, prometheus.DefaultRegisterer)
 	reflection.Register(srv)
 	lis, err := net.Listen(tcp, fmt.Sprintf("localhost:%d", port))
@@ -74,6 +80,8 @@ func registerUserService(
 	case mongoDb:
 		server.RegisterMongoUserService(ctx, srv)
 	case mysql:
+		log.Fatalf("database type %s not supported", databaseType)
+	case postgres:
 		log.Fatalf("database type %s not supported", databaseType)
 	default:
 		log.Fatalf("database type %s not supported", databaseType)
