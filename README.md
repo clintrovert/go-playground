@@ -19,22 +19,22 @@ Requesting unary User endpoints -
 
 #### Get User
 ```bash
-grpcurl -H 'authorization: Bearer test' -d '{"id":"<test>"}' -plaintext localhost:9099 playground.UserService.GetUser
+grpcurl -H 'authorization: Bearer test' -d '{"id":"<test>"}' -plaintext localhost:9090 playground.UserService.GetUser
 ```
 
 #### Create User
 ```bash
-grpcurl -H 'authorization: Bearer test' -d '{"name":"test","email":"test@test.com","password":"helloworld"}' -plaintext localhost:9099 playground.UserService.CreateUser
+grpcurl -H 'authorization: Bearer test' -d '{"name":"test","email":"test@test.com","password":"helloworld"}' -plaintext localhost:9090 playground.UserService.CreateUser
 ```
 
 #### Update User
 ```bash
-grpcurl -H 'authorization: Bearer test' -d '{"id":"<test>","name":"updatedName","email":"updatedEmail@password.com", "password":"updatedPassword"}' -plaintext localhost:9099 playground.UserService.UpdateUser
+grpcurl -H 'authorization: Bearer test' -d '{"id":"<test>","name":"updatedName","email":"updatedEmail@password.com", "password":"updatedPassword"}' -plaintext localhost:9090 playground.UserService.UpdateUser
 ```
 
 #### Delete User
 ```bash
-grpcurl -H 'authorization: Bearer test' -d '{"user_id":"<test>"}' -plaintext localhost:9099 playground.UserService.DeleteUser
+grpcurl -H 'authorization: Bearer test' -d '{"user_id":"<test>"}' -plaintext localhost:9090 playground.UserService.DeleteUser
 ```
 
 ### For Mongo

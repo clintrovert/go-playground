@@ -2,30 +2,37 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net"
+	"net/http"
+	"os"
 
 	"github.com/clintrovert/go-playground/internal/server"
 	metrics "github.com/grpc-ecosystem/go-grpc-middleware/providers/openmetrics/v2"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
+	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
+type databaseType string
+
 const (
-	tcp        = "tcp"
-	port       = 9099
-	firebaseDb = "firebase"
-	mysql      = "mysql"
-	postgres   = "postgres"
-	mongoDb    = "mongodb"
+	mysql      databaseType = "mysql"
+	postgres   databaseType = "postgres"
+	mongoDb    databaseType = "mongodb"
+	firebaseDb databaseType = "firebase"
+
+	tcp      = "tcp"
+	grpcAddr = ":9099"
+	httpAddr = ":9095"
 )
 
 func main() {
-	var err error
+	//var err error
 	ctx := context.Background()
 
 	srv := grpc.NewServer(
@@ -40,14 +47,57 @@ func main() {
 	)
 
 	registerUserService(ctx, srv, mongoDb)
+	srvMetrics := metrics.NewRegisteredServerMetrics(
+		prometheus.DefaultRegisterer,
+		metrics.WithServerHandlingTimeHistogram(),
+	)
+	registry := prometheus.NewRegistry()
+	registry.MustRegister(srvMetrics)
+	srvMetrics.InitializeMetrics(srv)
 	//registerServiceMetrics(server, prometheus.DefaultRegisterer)
 	reflection.Register(srv)
-	lis, err := net.Listen(tcp, fmt.Sprintf("localhost:%d", port))
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-	if err = srv.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+	//lis, err := net.Listen(tcp, grpcAddr)
+	//if err != nil {
+	//	log.Fatalf("failed to listen: %v", err)
+	//}
+	//if err = srv.Serve(lis); err != nil {
+	//	log.Fatalf("failed to serve: %v", err)
+	//}
+
+	g := &run.Group{}
+	g.Add(func() error {
+		l, err := net.Listen(tcp, grpcAddr)
+		if err != nil {
+			return err
+		}
+		return srv.Serve(l)
+	}, func(err error) {
+		srv.GracefulStop()
+		srv.Stop()
+	})
+
+	httpSrv := &http.Server{Addr: httpAddr}
+	g.Add(func() error {
+		m := http.NewServeMux()
+		// Create HTTP handler for Prometheus metrics.
+		m.Handle("/metrics", promhttp.HandlerFor(
+			registry,
+			promhttp.HandlerOpts{
+				// Opt into OpenMetrics e.g. to support exemplars.
+				EnableOpenMetrics: true,
+			},
+		))
+		httpSrv.Handler = m
+		log.Println("starting http server at " + httpAddr)
+		return httpSrv.ListenAndServe()
+	}, func(error) {
+		if err := httpSrv.Close(); err != nil {
+			log.Fatalf("failed to close http server: %v", err)
+		}
+	})
+
+	if err := g.Run(); err != nil {
+		os.Exit(1)
 	}
 }
 
@@ -72,7 +122,7 @@ func streamInterceptor(
 func registerUserService(
 	ctx context.Context,
 	srv *grpc.Server,
-	databaseType string,
+	databaseType databaseType,
 ) {
 	switch databaseType {
 	case firebaseDb:
