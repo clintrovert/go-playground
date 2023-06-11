@@ -1,0 +1,77 @@
+syntax = "proto3";
+option go_package = "github.com/redactedworks/go-grpc-server/api/model";
+
+package playground;
+
+message User {
+  string id = 1;
+  string name = 2;
+  string email = 3;
+  string password = 4;
+  string created_at = 5;
+  string updated_at = 6;
+}
+
+message GetUserRequest {
+  string user_id = 1;
+}
+
+message GetUserResponse {
+  User user = 1;
+}
+
+message CreateUserRequest{
+  string name = 2;
+  string email = 3;
+  string password = 4;
+}
+
+message CreateUserResponse{
+  bool success = 1;
+
+}
+message UpdateUserRequest{
+  string id = 1;
+  string name = 2;
+  string email = 3;
+  string password = 4;
+}
+
+message UpdateUserResponse{
+  bool updated = 1;
+}
+
+message DeleteUserRequest{
+  string user_id = 1;
+}
+
+message DeleteUserResponse{
+  bool deleted = 1;
+}
+
+service UserService {
+  rpc GetUser(GetUserRequest) returns (GetUserResponse) {
+//    option (google.api.http) = {
+//      post: "/v1/getuser"
+//      body: "*"
+//    };
+  };
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {
+//    option (google.api.http) = {
+//      post: "/v1/createuser"
+//      body: "*"
+//    };
+  };
+  rpc UpdateUser(UpdateUserRequest) returns (UpdateUserResponse) {
+//    option (google.api.http) = {
+//      post: "/v1/updateuser"
+//      body: "*"
+//    };
+  };
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse) {
+//    option (google.api.http) = {
+//      post: "/v1/deleteuser"
+//      body: "*"
+//    };
+  };
+}
