@@ -26,9 +26,10 @@ const (
 	mongoDb    databaseType = "mongodb"
 	firebaseDb databaseType = "firebase"
 
-	tcp      = "tcp"
-	grpcAddr = ":9099"
-	httpAddr = ":9095"
+	tcp             = "tcp"
+	grpcAddr        = ":9099"
+	httpAddr        = ":9095"
+	metricsEndpoint = "/metrics"
 )
 
 func main() {
@@ -54,15 +55,7 @@ func main() {
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(srvMetrics)
 	srvMetrics.InitializeMetrics(srv)
-	//registerServiceMetrics(server, prometheus.DefaultRegisterer)
 	reflection.Register(srv)
-	//lis, err := net.Listen(tcp, grpcAddr)
-	//if err != nil {
-	//	log.Fatalf("failed to listen: %v", err)
-	//}
-	//if err = srv.Serve(lis); err != nil {
-	//	log.Fatalf("failed to serve: %v", err)
-	//}
 
 	g := &run.Group{}
 	g.Add(func() error {
@@ -77,24 +70,23 @@ func main() {
 	})
 
 	httpSrv := &http.Server{Addr: httpAddr}
-	g.Add(func() error {
-		m := http.NewServeMux()
-		// Create HTTP handler for Prometheus metrics.
-		m.Handle("/metrics", promhttp.HandlerFor(
-			registry,
-			promhttp.HandlerOpts{
-				// Opt into OpenMetrics e.g. to support exemplars.
-				EnableOpenMetrics: true,
-			},
-		))
-		httpSrv.Handler = m
-		log.Println("starting http server at " + httpAddr)
-		return httpSrv.ListenAndServe()
-	}, func(error) {
-		if err := httpSrv.Close(); err != nil {
-			log.Fatalf("failed to close http server: %v", err)
-		}
-	})
+	g.Add(
+		func() error {
+			m := http.NewServeMux()
+			m.Handle(metricsEndpoint, promhttp.HandlerFor(
+				registry,
+				promhttp.HandlerOpts{
+					EnableOpenMetrics: true,
+				},
+			))
+			httpSrv.Handler = m
+			log.Println("starting http server at " + httpAddr)
+			return httpSrv.ListenAndServe()
+		}, func(error) {
+			if err := httpSrv.Close(); err != nil {
+				log.Fatalf("failed to close http server: %v", err)
+			}
+		})
 
 	if err := g.Run(); err != nil {
 		os.Exit(1)
