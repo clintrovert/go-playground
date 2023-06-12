@@ -32,7 +32,6 @@ const (
 )
 
 func main() {
-	//var err error
 	srvMetrics := metrics.NewRegisteredServerMetrics(
 		prometheus.DefaultRegisterer,
 		metrics.WithServerHandlingTimeHistogram(),
@@ -55,9 +54,7 @@ func main() {
 	)
 
 	srvMetrics.InitializeMetrics(srv)
-
 	registerUserService(ctx, srv, mongoDb)
-
 	reflection.Register(srv)
 
 	g := &run.Group{}
@@ -102,7 +99,7 @@ func unaryInterceptor(
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (any, error) {
-	logrus.Info("unary interceptor")
+	logrus.Info(info.FullMethod + " requested")
 	return handler(ctx, req)
 }
 
@@ -111,6 +108,7 @@ func streamInterceptor(
 	stream grpc.ServerStream,
 	info *grpc.StreamServerInfo,
 	handler grpc.StreamHandler) error {
+	logrus.Info(info.FullMethod + " requested")
 	return handler(srv, stream)
 }
 
@@ -131,15 +129,4 @@ func registerUserService(
 	default:
 		log.Fatalf("database type %s not supported", databaseType)
 	}
-}
-
-func registerServiceMetrics(server *grpc.Server, reg prometheus.Registerer) {
-	srvMetrics := metrics.NewRegisteredServerMetrics(
-		reg,
-		metrics.WithServerHandlingTimeHistogram(),
-	)
-	registry := prometheus.NewRegistry()
-	registry.MustRegister(srvMetrics)
-	srvMetrics.InitializeMetrics(server)
-	logrus.Info("service metrics registered")
 }

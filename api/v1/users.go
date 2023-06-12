@@ -45,10 +45,7 @@ type UserService struct {
 }
 
 // NewUserService creates a new instance of a UserService.
-func NewUserService(
-	db UserDataManager,
-	log *logrus.Logger,
-) (*UserService, error) {
+func NewUserService(db UserDataManager, log *logrus.Logger) (*UserService, error) {
 	if db == nil {
 		return nil, errors.New("db is required")
 	}
