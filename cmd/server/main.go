@@ -34,27 +34,31 @@ const (
 
 func main() {
 	//var err error
-	ctx := context.Background()
-
-	srv := grpc.NewServer(
-		grpc.ChainUnaryInterceptor(
-			auth.UnaryServerInterceptor(server.Authorize),
-			unaryInterceptor,
-		),
-		grpc.ChainStreamInterceptor(
-			auth.StreamServerInterceptor(server.Authorize),
-			streamInterceptor,
-		),
-	)
-
-	registerUserService(ctx, srv, mongoDb)
 	srvMetrics := metrics.NewRegisteredServerMetrics(
 		prometheus.DefaultRegisterer,
 		metrics.WithServerHandlingTimeHistogram(),
 	)
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(srvMetrics)
+	ctx := context.Background()
+
+	srv := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			metrics.UnaryServerInterceptor(srvMetrics),
+			auth.UnaryServerInterceptor(server.Authorize),
+			unaryInterceptor,
+		),
+		grpc.ChainStreamInterceptor(
+			metrics.StreamServerInterceptor(srvMetrics),
+			auth.StreamServerInterceptor(server.Authorize),
+			streamInterceptor,
+		),
+	)
+
 	srvMetrics.InitializeMetrics(srv)
+
+	registerUserService(ctx, srv, mongoDb)
+
 	reflection.Register(srv)
 
 	g := &run.Group{}
