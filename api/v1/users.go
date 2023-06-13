@@ -139,11 +139,20 @@ func (s *UserService) UpdateUser(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	encrypted, err := bcrypt.GenerateFromPassword(
+		[]byte(strings.TrimSpace(request.Password)),
+		bcrypt.DefaultCost,
+	)
+	if err != nil {
+		s.log.Error(err)
+		return nil, status.Error(codes.Internal, err.Error())
+	}
+
 	user := &model.User{
 		Id:       strings.TrimSpace(request.Id),
 		Name:     strings.TrimSpace(request.Name),
 		Email:    strings.TrimSpace(request.Email),
-		Password: strings.TrimSpace(request.Password),
+		Password: string(encrypted),
 	}
 
 	if err := s.db.UpdateUser(ctx, user); err != nil {
