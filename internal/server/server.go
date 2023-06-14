@@ -79,3 +79,9 @@ func RegisterFirebaseUserService(ctx context.Context, server *grpc.Server) {
 	model.RegisterUserServiceServer(server, svc)
 	logrus.Info("user service registered")
 }
+
+func RegisterAuthService(ctx context.Context, server *grpc.Server) {
+	authService := v1.NewAuthService()
+	model.RegisterAuthServiceServer(server, authService)
+	logrus.Info("auth service registered")
+}

@@ -68,8 +68,10 @@ func (u *UserDatabase) UpdateUser(ctx context.Context, user *model.User) error {
 	if err != nil {
 		return err
 	}
+
 	filter := bson.D{{userId, objectId}}
 	update := bson.D{{"$set", convertUserToDoc(user)}}
+
 	res, err := u.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
 		return err
@@ -111,6 +113,7 @@ func convertUserToDoc(user *model.User) bson.D {
 	if err != nil {
 		return nil
 	}
+
 	return bson.D{
 		{userId, objId},
 		{"name", user.Name},

@@ -2,18 +2,25 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"os"
 
+	"github.com/clintrovert/go-playground/api/model"
 	"github.com/clintrovert/go-playground/internal/server"
 	metrics "github.com/grpc-ecosystem/go-grpc-middleware/providers/openmetrics/v2"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/selector"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -40,10 +47,40 @@ func main() {
 	registry.MustRegister(srvMetrics)
 	ctx := context.Background()
 
+	excludeAuth := func(ctx context.Context, service string) bool {
+		return model.AuthService_ServiceDesc.ServiceName != service
+	}
+
+	// Load the certificate and private key files
+	certificate, err := tls.LoadX509KeyPair("certs/cert.pem", "certs/key.pem")
+	if err != nil {
+		log.Fatalf("Failed to load certificate and key: %v", err)
+	}
+
+	// Create a certificate pool and add the self-signed certificate
+	certPool := x509.NewCertPool()
+	ca, err := ioutil.ReadFile("certs/cert.pem")
+	if err != nil {
+		log.Fatalf("Failed to load CA certificate: %v", err)
+	}
+	if ok := certPool.AppendCertsFromPEM(ca); !ok {
+		log.Fatalf("Failed to append CA certificate")
+	}
+
+	// Create the TLS credentials using the certificate and pool
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{certificate},
+		ClientAuth:   tls.RequireAndVerifyClientCert,
+		ClientCAs:    certPool,
+	}
+
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			metrics.UnaryServerInterceptor(srvMetrics),
-			//auth.UnaryServerInterceptor(server.Authorize),
+			selector.UnaryServerInterceptor(
+				auth.UnaryServerInterceptor(server.Authorize),
+				selector.MatchFunc(excludeAuth),
+			),
 			unaryInterceptor,
 		),
 		grpc.ChainStreamInterceptor(
@@ -51,10 +88,12 @@ func main() {
 			//auth.StreamServerInterceptor(server.Authorize),
 			streamInterceptor,
 		),
+		grpc.Creds(credentials.NewTLS(tlsConfig)),
 	)
 
 	srvMetrics.InitializeMetrics(srv)
 	registerUserService(ctx, srv, mongoDb)
+	server.RegisterAuthService(ctx, srv)
 	reflection.Register(srv)
 
 	g := &run.Group{}
