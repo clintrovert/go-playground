@@ -14,6 +14,6 @@ RUN go build -o server .
 
 FROM alpine
 
-COPY --from=0 /app/server /usr/bin
+COPY --from=0 /app/cmd/server /usr/bin
 
 CMD ["/usr/bin/server"]
