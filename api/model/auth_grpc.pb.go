@@ -22,7 +22,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AuthServiceClient interface {
-	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
+	GenerateBearerToken(ctx context.Context, in *GenerateBearerTokenRequest, opts ...grpc.CallOption) (*GenerateBearerTokenResponse, error)
 }
 
 type authServiceClient struct {
@@ -33,9 +33,9 @@ func NewAuthServiceClient(cc grpc.ClientConnInterface) AuthServiceClient {
 	return &authServiceClient{cc}
 }
 
-func (c *authServiceClient) Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error) {
-	out := new(LoginResponse)
-	err := c.cc.Invoke(ctx, "/playground.AuthService/Login", in, out, opts...)
+func (c *authServiceClient) GenerateBearerToken(ctx context.Context, in *GenerateBearerTokenRequest, opts ...grpc.CallOption) (*GenerateBearerTokenResponse, error) {
+	out := new(GenerateBearerTokenResponse)
+	err := c.cc.Invoke(ctx, "/playground.AuthService/GenerateBearerToken", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (c *authServiceClient) Login(ctx context.Context, in *LoginRequest, opts ..
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility
 type AuthServiceServer interface {
-	Login(context.Context, *LoginRequest) (*LoginResponse, error)
+	GenerateBearerToken(context.Context, *GenerateBearerTokenRequest) (*GenerateBearerTokenResponse, error)
 	mustEmbedUnimplementedAuthServiceServer()
 }
 
@@ -54,8 +54,8 @@ type AuthServiceServer interface {
 type UnimplementedAuthServiceServer struct {
 }
 
-func (UnimplementedAuthServiceServer) Login(context.Context, *LoginRequest) (*LoginResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
+func (UnimplementedAuthServiceServer) GenerateBearerToken(context.Context, *GenerateBearerTokenRequest) (*GenerateBearerTokenResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GenerateBearerToken not implemented")
 }
 func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
 
@@ -70,20 +70,20 @@ func RegisterAuthServiceServer(s grpc.ServiceRegistrar, srv AuthServiceServer) {
 	s.RegisterService(&AuthService_ServiceDesc, srv)
 }
 
-func _AuthService_Login_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(LoginRequest)
+func _AuthService_GenerateBearerToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GenerateBearerTokenRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AuthServiceServer).Login(ctx, in)
+		return srv.(AuthServiceServer).GenerateBearerToken(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/playground.AuthService/Login",
+		FullMethod: "/playground.AuthService/GenerateBearerToken",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthServiceServer).Login(ctx, req.(*LoginRequest))
+		return srv.(AuthServiceServer).GenerateBearerToken(ctx, req.(*GenerateBearerTokenRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -96,8 +96,8 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*AuthServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Login",
-			Handler:    _AuthService_Login_Handler,
+			MethodName: "GenerateBearerToken",
+			Handler:    _AuthService_GenerateBearerToken_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
