@@ -27,7 +27,7 @@ const (
 	firebaseCredEnvVar = "FIREBASE_CRED_FILEPATH"
 )
 
-func Authorize(ctx context.Context) (context.Context, error) {
+func Authenticate(ctx context.Context) (context.Context, error) {
 	token, err := auth.AuthFromMD(ctx, "bearer")
 	if err != nil {
 		return nil, err

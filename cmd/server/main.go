@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"crypto/x509"
 	"io/ioutil"
 	"log"
@@ -20,7 +19,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -52,10 +50,10 @@ func main() {
 	}
 
 	// Load the certificate and private key files
-	certificate, err := tls.LoadX509KeyPair("certs/cert.pem", "certs/key.pem")
-	if err != nil {
-		log.Fatalf("Failed to load certificate and key: %v", err)
-	}
+	//certificate, err := tls.LoadX509KeyPair("certs/cert.pem", "certs/key.pem")
+	//if err != nil {
+	//	log.Fatalf("Failed to load certificate and key: %v", err)
+	//}
 
 	// Create a certificate pool and add the self-signed certificate
 	certPool := x509.NewCertPool()
@@ -68,27 +66,26 @@ func main() {
 	}
 
 	// Create the TLS credentials using the certificate and pool
-	tlsConfig := &tls.Config{
-		Certificates: []tls.Certificate{certificate},
-		ClientAuth:   tls.RequireAndVerifyClientCert,
-		ClientCAs:    certPool,
-	}
+	//tlsConfig := &tls.Config{
+	//	Certificates: []tls.Certificate{certificate},
+	//	ClientAuth:   tls.RequireAndVerifyClientCert,
+	//	ClientCAs:    certPool,
+	//}
 
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			metrics.UnaryServerInterceptor(srvMetrics),
 			selector.UnaryServerInterceptor(
-				auth.UnaryServerInterceptor(server.Authorize),
+				auth.UnaryServerInterceptor(server.Authenticate),
 				selector.MatchFunc(excludeAuth),
 			),
 			unaryInterceptor,
 		),
 		grpc.ChainStreamInterceptor(
 			metrics.StreamServerInterceptor(srvMetrics),
-			//auth.StreamServerInterceptor(server.Authorize),
+			//auth.StreamServerInterceptor(server.Authenticate),
 			streamInterceptor,
 		),
-		grpc.Creds(credentials.NewTLS(tlsConfig)),
 	)
 
 	srvMetrics.InitializeMetrics(srv)
