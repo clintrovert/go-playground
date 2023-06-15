@@ -20,10 +20,13 @@ const (
 )
 
 var (
+	ErrUserAuthFailed      = errors.New("user authentication failed")
 	ErrUserIdMissing       = errors.New("user id was not specified")
 	ErrUserEmailMissing    = errors.New("user email was not specified")
 	ErrUserEmailInvalid    = errors.New("user email was invalid")
 	ErrUserNameMissing     = errors.New("user name was not specified")
+	ErrUserCreateFailed    = errors.New("user creation failed")
+	ErrUserUpdateFailed    = errors.New("user update failed")
 	ErrUserDeletionFailed  = errors.New("user deletion failed")
 	ErrUserPasswordMissing = errors.New("user password was not specified")
 )
@@ -64,7 +67,7 @@ func (s *UserService) GetUser(
 	request *model.GetUserRequest,
 ) (*model.GetUserResponse, error) {
 	if err := validateContext(ctx); err != nil {
-		return nil, status.Error(codes.Unauthenticated, err.Error())
+		return nil, status.Error(codes.Unauthenticated, ErrUserAuthFailed.Error())
 	}
 
 	if err := validateGetUserRequest(request); err != nil {
@@ -120,7 +123,7 @@ func (s *UserService) CreateUser(
 		//s.log.
 		//	WithField(userLogField, user.Id).
 		//	Error(err)
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(codes.Internal, ErrUserCreateFailed.Error())
 	}
 
 	return &model.CreateUserResponse{Success: true}, nil
@@ -155,11 +158,11 @@ func (s *UserService) UpdateUser(
 		Password: string(encrypted),
 	}
 
-	if err := s.db.UpdateUser(ctx, user); err != nil {
+	if err = s.db.UpdateUser(ctx, user); err != nil {
 		s.log.
 			WithField(userLogField, user.Id).
 			Error(err)
-		return nil, status.Error(codes.Internal, err.Error())
+		return nil, status.Error(codes.Internal, ErrUserUpdateFailed.Error())
 	}
 
 	return &model.UpdateUserResponse{
