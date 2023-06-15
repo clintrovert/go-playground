@@ -1,4 +1,6 @@
-# go-backend-playground
+# go-playground
+![build workflow](https://github.com/clintrovert/go-playground/actions/workflows/go.yml/badge.svg)
+
 Simple go server with Docker build file
 
 Project structure follows [goland-standards](https://github.com/golang-standards/project-layout) recommendations.
