@@ -32,28 +32,28 @@ const (
 )
 
 func main() {
-	srvMetrics := metrics.NewRegisteredServerMetrics(
+	serverMetrics := metrics.NewRegisteredServerMetrics(
 		prometheus.DefaultRegisterer,
 		metrics.WithServerHandlingTimeHistogram(),
 	)
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(srvMetrics)
+	registry.MustRegister(serverMetrics)
 	ctx := context.Background()
 
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
-			metrics.UnaryServerInterceptor(srvMetrics),
+			metrics.UnaryServerInterceptor(serverMetrics),
 			//auth.UnaryServerInterceptor(server.Authorize),
 			unaryInterceptor,
 		),
 		grpc.ChainStreamInterceptor(
-			metrics.StreamServerInterceptor(srvMetrics),
+			metrics.StreamServerInterceptor(serverMetrics),
 			//auth.StreamServerInterceptor(server.Authorize),
 			streamInterceptor,
 		),
 	)
 
-	srvMetrics.InitializeMetrics(srv)
+	serverMetrics.InitializeMetrics(srv)
 	registerUserService(ctx, srv, mongoDb)
 	reflection.Register(srv)
 

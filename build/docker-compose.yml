@@ -2,6 +2,21 @@
 version: '3.7'
 
 services:
+  playground:
+    build:
+      dockerfile: build/Dockerfile
+      context: ../
+    environment:
+      - MONGO_DB_URL=mongodb://root:example@mongo:27017
+      - FIREBASE_CRED_FILEPATH="${FIREBASE_CRED_FILEPATH}"
+      - FIREBASE_DB_URL="${FIREBASE_DB_URL}"
+    container_name: playground
+    depends_on:
+      - prometheus
+      - grafana
+      - mongo
+    ports:
+      - "9099:9099"
   prometheus:
     image: prom/prometheus
     container_name: prometheus
