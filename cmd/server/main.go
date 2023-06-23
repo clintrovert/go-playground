@@ -9,6 +9,7 @@ import (
 
 	"github.com/clintrovert/go-playground/internal/server"
 	metrics "github.com/grpc-ecosystem/go-grpc-middleware/providers/openmetrics/v2"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -43,12 +44,12 @@ func main() {
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			metrics.UnaryServerInterceptor(serverMetrics),
-			//auth.UnaryServerInterceptor(server.Authorize),
+			auth.UnaryServerInterceptor(server.Authorize),
 			unaryInterceptor,
 		),
 		grpc.ChainStreamInterceptor(
 			metrics.StreamServerInterceptor(serverMetrics),
-			//auth.StreamServerInterceptor(server.Authorize),
+			auth.StreamServerInterceptor(server.Authorize),
 			streamInterceptor,
 		),
 	)
