@@ -36,7 +36,9 @@ func Authorize(ctx context.Context) (context.Context, error) {
 	if token != "test" {
 		return nil, status.Errorf(codes.Unauthenticated, "invalid auth token")
 	}
-	// NOTE: You can also pass the token in the context for further interceptors or gRPC service code.
+
+	// NOTE: You can also pass the token in the context for further interceptors
+	// or gRPC service code.
 	return ctx, nil
 }
 
@@ -56,6 +58,10 @@ func RegisterMongoUserService(ctx context.Context, server *grpc.Server) {
 	}
 	model.RegisterUserServiceServer(server, svc)
 	logrus.Info("user service registered")
+}
+
+func RegisterMongoProductService(ctx context.Context, server *grpc.Server) {
+	logrus.Info("product service registered")
 }
 
 func RegisterFirebaseUserService(ctx context.Context, server *grpc.Server) {
@@ -78,4 +84,8 @@ func RegisterFirebaseUserService(ctx context.Context, server *grpc.Server) {
 
 	model.RegisterUserServiceServer(server, svc)
 	logrus.Info("user service registered")
+}
+
+func RegisterFirebaseProductService(ctx context.Context, server *grpc.Server) {
+	logrus.Info("product service registered")
 }

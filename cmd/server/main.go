@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
+// This is for the purposes of demo. Remove in individual implementation.
 type databaseType string
 
 const (
@@ -33,14 +34,19 @@ const (
 )
 
 func main() {
+	// Requirement to have prometheus metrics.
 	serverMetrics := metrics.NewRegisteredServerMetrics(
 		prometheus.DefaultRegisterer,
 		metrics.WithServerHandlingTimeHistogram(),
 	)
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(serverMetrics)
-	ctx := context.Background()
 
+	// Set up the following middlewares on unary and stream RPCs:
+	//- metrics
+	//- auth
+	//- logging
+	//- tracing
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			metrics.UnaryServerInterceptor(serverMetrics),
@@ -53,9 +59,15 @@ func main() {
 			streamInterceptor,
 		),
 	)
-
 	serverMetrics.InitializeMetrics(srv)
+
+	ctx := context.Background()
+
+	// Register service RPCs on server
 	registerUserService(ctx, srv, mongoDb)
+	registerProductService(ctx, srv, mongoDb)
+
+	// Enable grpc reflection for grpcurl
 	reflection.Register(srv)
 
 	g := &run.Group{}
@@ -123,6 +135,25 @@ func registerUserService(
 		server.RegisterFirebaseUserService(ctx, srv)
 	case mongoDb:
 		server.RegisterMongoUserService(ctx, srv)
+	case mysql:
+		log.Fatalf("database type %s not supported", databaseType)
+	case postgres:
+		log.Fatalf("database type %s not supported", databaseType)
+	default:
+		log.Fatalf("database type %s not supported", databaseType)
+	}
+}
+
+func registerProductService(
+	ctx context.Context,
+	srv *grpc.Server,
+	databaseType databaseType,
+) {
+	switch databaseType {
+	case firebaseDb:
+		server.RegisterFirebaseProductService(ctx, srv)
+	case mongoDb:
+		server.RegisterMongoProductService(ctx, srv)
 	case mysql:
 		log.Fatalf("database type %s not supported", databaseType)
 	case postgres:
