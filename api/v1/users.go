@@ -31,24 +31,27 @@ var (
 	ErrUserPasswordMissing = errors.New("user password was not specified")
 )
 
-// UserDataManager provides basic CRUD database operations for Users.
-type UserDataManager interface {
+// UserDatabase provides database operations for Users.
+type UserDatabase interface {
+	// GetUser retrieves a User by their ID from the database.
 	GetUser(ctx context.Context, id string) (*model.User, error)
+	// CreateUser creates a new User in the database.
 	CreateUser(ctx context.Context, user *model.User) error
+	// UpdateUser updates an existing User in the database.
 	UpdateUser(ctx context.Context, user *model.User) error
+	// DeleteUser deletes a User from the database.
 	DeleteUser(ctx context.Context, id string) error
 }
 
 // UserService provides functionality to manage Users.
 type UserService struct {
-	db  UserDataManager
-	log *logrus.Logger
-
 	model.UnimplementedUserServiceServer
+	db  UserDatabase
+	log *logrus.Logger
 }
 
 // NewUserService creates a new instance of a UserService.
-func NewUserService(db UserDataManager, log *logrus.Logger) (*UserService, error) {
+func NewUserService(db UserDatabase, log *logrus.Logger) (*UserService, error) {
 	if db == nil {
 		return nil, errors.New("db is required")
 	}
