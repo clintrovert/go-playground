@@ -43,27 +43,29 @@ func main() {
 		recovery.WithRecoveryHandler(server.Recover),
 	}
 
-	// Set up the following middlewares on unary/stream RPC requests:
+	// Set up the following middlewares on unary/stream RPC requests, (ordering
+	// of these matters to some extent):
 	// - metrics
 	// - auth
 	// - rate limiting
 	// - logging
 	// - req validation
 	// - tracing
+	// - custom
 	grpcServer := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			openmetrics.UnaryServerInterceptor(metrics),
 			auth.UnaryServerInterceptor(server.Authorize),
 			ratelimit.UnaryServerInterceptor(limiter),
 			recovery.UnaryServerInterceptor(recoveryOpts...),
-			customUnaryInterceptor,
+			server.CustomUnaryInterceptor,
 		),
 		grpc.ChainStreamInterceptor(
 			openmetrics.StreamServerInterceptor(metrics),
 			auth.StreamServerInterceptor(server.Authorize),
 			ratelimit.StreamServerInterceptor(limiter),
 			recovery.StreamServerInterceptor(recoveryOpts...),
-			customStreamInterceptor,
+			server.CustomStreamInterceptor,
 		),
 	)
 	httpServer := &http.Server{Addr: httpAddr}
@@ -85,25 +87,6 @@ func main() {
 	if err := g.Run(); err != nil {
 		os.Exit(1)
 	}
-}
-
-func customUnaryInterceptor(
-	ctx context.Context,
-	req any,
-	info *grpc.UnaryServerInfo,
-	handler grpc.UnaryHandler,
-) (any, error) {
-	// Custom logic goes here.
-	return handler(ctx, req)
-}
-
-func customStreamInterceptor(
-	srv any,
-	stream grpc.ServerStream,
-	info *grpc.StreamServerInfo,
-	handler grpc.StreamHandler) error {
-	// Custom logic goes here.
-	return handler(srv, stream)
 }
 
 // This is for the purposes of demo. Remove in individual implementation.

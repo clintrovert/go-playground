@@ -49,5 +49,30 @@ services:
       - "27017:27017"
     volumes:
       - /Users/cjohnson/workspace/data:/data/db
+  cache:
+    image: redis:6.2-alpine
+    restart: always
+    ports:
+      - '6379:6379'
+    command: redis-server --save 20 1 --loglevel warning --requirepass eYVX7EwVmmxKPCDmwMtyKVge8oLd2t81
+    volumes:
+      - cache:/data
+
+#  AWS S3 compliant file store
+  minio:
+    container_name: Minio
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password
+    image: quay.io/minio/minio:latest
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - /docker/minio:/data
+    restart: unless-stopped
 volumes:
   prom_data:
+  cache:
+    driver: local
