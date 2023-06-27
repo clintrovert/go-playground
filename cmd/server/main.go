@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"net"
 	"net/http"
 	"os"
 
@@ -11,10 +10,9 @@ import (
 	openmetrics "github.com/grpc-ecosystem/go-grpc-middleware/providers/openmetrics/v2"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/ratelimit"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -28,14 +26,11 @@ const (
 	firebase databaseType = "firebase"
 	postgres databaseType = "postgres"
 
-	tcp             = "tcp"
-	grpcAddr        = ":9099"
-	httpAddr        = ":8088"
-	metricsEndpoint = "/metrics"
+	grpcAddr = ":9099"
+	httpAddr = ":8088"
 )
 
 func main() {
-	// Setup prometheus register/registry.
 	metrics := openmetrics.NewRegisteredServerMetrics(
 		prometheus.DefaultRegisterer,
 		openmetrics.WithServerHandlingTimeHistogram(),
@@ -44,68 +39,48 @@ func main() {
 	registry.MustRegister(metrics)
 
 	limiter := server.NewRateLimiter()
+	recoveryOpts := []recovery.Option{
+		recovery.WithRecoveryHandler(server.Recover),
+	}
+
 	// Set up the following middlewares on unary/stream RPC requests:
 	// - metrics
 	// - auth
 	// - rate limiting
 	// - logging
+	// - req validation
 	// - tracing
-	srv := grpc.NewServer(
+	grpcServer := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			openmetrics.UnaryServerInterceptor(metrics),
 			auth.UnaryServerInterceptor(server.Authorize),
 			ratelimit.UnaryServerInterceptor(limiter),
+			recovery.UnaryServerInterceptor(recoveryOpts...),
 			customUnaryInterceptor,
 		),
 		grpc.ChainStreamInterceptor(
 			openmetrics.StreamServerInterceptor(metrics),
 			auth.StreamServerInterceptor(server.Authorize),
 			ratelimit.StreamServerInterceptor(limiter),
+			recovery.StreamServerInterceptor(recoveryOpts...),
 			customStreamInterceptor,
 		),
 	)
-	metrics.InitializeMetrics(srv)
+	httpServer := &http.Server{Addr: httpAddr}
 
+	metrics.InitializeMetrics(grpcServer)
 	ctx := context.Background()
 
 	// Register service RPCs on server
-	registerUserService(ctx, srv, postgres)
-	registerProductService(ctx, srv, postgres)
+	registerUserService(ctx, grpcServer, postgres)
+	registerProductService(ctx, grpcServer, postgres)
 
 	// Enable grpc reflection for grpcurl
-	reflection.Register(srv)
+	reflection.Register(grpcServer)
 
 	g := &run.Group{}
-	g.Add(func() error {
-		l, err := net.Listen(tcp, grpcAddr)
-		if err != nil {
-			return err
-		}
-		return srv.Serve(l)
-	}, func(err error) {
-		srv.GracefulStop()
-		srv.Stop()
-	})
-
-	// Setup metrics endpoint served over http
-	httpSrv := &http.Server{Addr: httpAddr}
-	g.Add(
-		func() error {
-			m := http.NewServeMux()
-			m.Handle(metricsEndpoint, promhttp.HandlerFor(
-				registry,
-				promhttp.HandlerOpts{
-					EnableOpenMetrics: true,
-				},
-			))
-			httpSrv.Handler = m
-			log.Println("starting http server at " + httpAddr)
-			return httpSrv.ListenAndServe()
-		}, func(error) {
-			if err := httpSrv.Close(); err != nil {
-				log.Fatalf("failed to close http server: %v", err)
-			}
-		})
+	g.Add(server.ServeGrpc(grpcServer, grpcAddr))
+	g.Add(server.ServeHttp(httpServer, registry))
 
 	if err := g.Run(); err != nil {
 		os.Exit(1)
@@ -118,7 +93,7 @@ func customUnaryInterceptor(
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (any, error) {
-	logrus.Info(info.FullMethod + " requested.")
+	// Custom logic goes here.
 	return handler(ctx, req)
 }
 
@@ -127,7 +102,7 @@ func customStreamInterceptor(
 	stream grpc.ServerStream,
 	info *grpc.StreamServerInfo,
 	handler grpc.StreamHandler) error {
-	logrus.Info(info.FullMethod + " requested.")
+	// Custom logic goes here.
 	return handler(srv, stream)
 }
 

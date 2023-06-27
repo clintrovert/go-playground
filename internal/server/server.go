@@ -11,14 +11,11 @@ import (
 	v1 "github.com/clintrovert/go-playground/api/v1"
 	"github.com/clintrovert/go-playground/pkg/firedb"
 	"github.com/clintrovert/go-playground/pkg/mongodb"
-	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
 const (
@@ -26,21 +23,6 @@ const (
 	firebaseUrlEnvVar  = "FIREBASE_DB_URL"
 	firebaseCredEnvVar = "FIREBASE_CRED_FILEPATH"
 )
-
-func Authorize(ctx context.Context) (context.Context, error) {
-	token, err := auth.AuthFromMD(ctx, "bearer")
-	if err != nil {
-		return nil, err
-	}
-	// TODO: This is example only, perform proper Oauth/OIDC verification!
-	if token != "test" {
-		return nil, status.Errorf(codes.Unauthenticated, "invalid auth token")
-	}
-
-	// NOTE: You can also pass the token in the context for further interceptors
-	// or gRPC service code.
-	return ctx, nil
-}
 
 func RegisterPostgresUserService(ctx context.Context, server *grpc.Server) {
 	logrus.Info("user service registered")
