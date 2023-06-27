@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	firebase "firebase.google.com/go"
+	"firebase.google.com/go/db"
 	"github.com/clintrovert/go-playground/api/model"
 	v1 "github.com/clintrovert/go-playground/api/v1"
 	"github.com/clintrovert/go-playground/pkg/firedb"
@@ -14,14 +14,11 @@ import (
 	"github.com/sirupsen/logrus"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"google.golang.org/api/option"
 	"google.golang.org/grpc"
 )
 
 const (
-	mongoDbUrlEnvVar   = "MONGO_DB_URL"
-	firebaseUrlEnvVar  = "FIREBASE_DB_URL"
-	firebaseCredEnvVar = "FIREBASE_CRED_FILEPATH"
+	mongoDbUrlEnvVar = "MONGO_DB_URL"
 )
 
 func RegisterPostgresUserService(ctx context.Context, server *grpc.Server) {
@@ -54,18 +51,7 @@ func RegisterMongoProductService(ctx context.Context, server *grpc.Server) {
 	logrus.Info("product service registered")
 }
 
-func RegisterFirebaseUserService(ctx context.Context, server *grpc.Server) {
-	conf := &firebase.Config{DatabaseURL: os.Getenv(firebaseUrlEnvVar)}
-	opt := option.WithCredentialsFile(os.Getenv(firebaseCredEnvVar))
-	app, err := firebase.NewApp(ctx, conf, opt)
-	if err != nil {
-		log.Fatalln("error in initializing firebase app: ", err)
-	}
-
-	database, err := app.Database(ctx)
-	if err != nil {
-		log.Fatalln("error in creating firebase DB client: ", err)
-	}
+func RegisterFirebaseUserService(ctx context.Context, server *grpc.Server, database *db.Client) {
 	users := firedb.NewUserDatabase(database)
 	svc, err := v1.NewUserService(users, logrus.New())
 	if err != nil {

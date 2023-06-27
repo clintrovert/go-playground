@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/clintrovert/go-playground/internal/server"
+	"github.com/clintrovert/go-playground/pkg/firedb"
 	openmetrics "github.com/grpc-ecosystem/go-grpc-middleware/providers/openmetrics/v2"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/ratelimit"
@@ -21,10 +22,10 @@ import (
 type databaseType string
 
 const (
-	mysql    databaseType = "mysql"
-	mongo    databaseType = "mongodb"
-	firebase databaseType = "firebase"
-	postgres databaseType = "postgres"
+	mysql      databaseType = "mysql"
+	mongo      databaseType = "mongodb"
+	firebasedb databaseType = "firebasedb"
+	postgres   databaseType = "postgres"
 
 	grpcAddr = ":9099"
 	httpAddr = ":8088"
@@ -43,8 +44,8 @@ func main() {
 		recovery.WithRecoveryHandler(server.Recover),
 	}
 
-	// Set up the following middlewares on unary/stream RPC requests, (ordering
-	// of these matters to some extent):
+	// Set up the following middlewares on unary/stream requests, (ordering of
+	// these matters to some extent):
 	// - metrics
 	// - auth
 	// - rate limiting
@@ -100,8 +101,9 @@ func registerUserService(
 		server.RegisterPostgresUserService(ctx, srv)
 	case mysql:
 		server.RegisterMySqlUserService(ctx, srv)
-	case firebase:
-		server.RegisterFirebaseUserService(ctx, srv)
+	case firebasedb:
+		database, _ := firedb.NewDatabase(ctx)
+		server.RegisterFirebaseUserService(ctx, srv, database)
 	case mongo:
 		server.RegisterMongoUserService(ctx, srv)
 	default:
@@ -120,7 +122,7 @@ func registerProductService(
 		server.RegisterPostgresProductService(ctx, srv)
 	case mysql:
 		server.RegisterMySqlProductService(ctx, srv)
-	case firebase:
+	case firebasedb:
 		server.RegisterFirebaseProductService(ctx, srv)
 	case mongo:
 		server.RegisterMongoProductService(ctx, srv)
