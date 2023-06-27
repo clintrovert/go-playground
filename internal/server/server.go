@@ -42,6 +42,14 @@ func Authorize(ctx context.Context) (context.Context, error) {
 	return ctx, nil
 }
 
+func RegisterPostgresUserService(ctx context.Context, server *grpc.Server) {
+	logrus.Info("user service registered")
+}
+
+func RegisterPostgresProductService(ctx context.Context, server *grpc.Server) {
+	logrus.Info("product service registered")
+}
+
 func RegisterMongoUserService(ctx context.Context, server *grpc.Server) {
 	client, err := mongo.Connect(
 		ctx,
@@ -87,5 +95,13 @@ func RegisterFirebaseUserService(ctx context.Context, server *grpc.Server) {
 }
 
 func RegisterFirebaseProductService(ctx context.Context, server *grpc.Server) {
+	logrus.Info("product service registered")
+}
+
+func RegisterMySqlUserService(ctx context.Context, server *grpc.Server) {
+	logrus.Info("user service registered")
+}
+
+func RegisterMySqlProductService(ctx context.Context, server *grpc.Server) {
 	logrus.Info("product service registered")
 }

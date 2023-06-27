@@ -8,8 +8,9 @@ import (
 	"os"
 
 	"github.com/clintrovert/go-playground/internal/server"
-	metrics "github.com/grpc-ecosystem/go-grpc-middleware/providers/openmetrics/v2"
+	openmetrics "github.com/grpc-ecosystem/go-grpc-middleware/providers/openmetrics/v2"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/ratelimit"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -22,50 +23,54 @@ import (
 type databaseType string
 
 const (
-	mysql      databaseType = "mysql"
-	postgres   databaseType = "postgres"
-	mongoDb    databaseType = "mongodb"
-	firebaseDb databaseType = "firebase"
+	mysql    databaseType = "mysql"
+	mongo    databaseType = "mongodb"
+	firebase databaseType = "firebase"
+	postgres databaseType = "postgres"
 
 	tcp             = "tcp"
 	grpcAddr        = ":9099"
-	httpAddr        = ":9095"
+	httpAddr        = ":8088"
 	metricsEndpoint = "/metrics"
 )
 
 func main() {
-	// Requirement to have prometheus metrics.
-	serverMetrics := metrics.NewRegisteredServerMetrics(
+	// Setup prometheus register/registry.
+	metrics := openmetrics.NewRegisteredServerMetrics(
 		prometheus.DefaultRegisterer,
-		metrics.WithServerHandlingTimeHistogram(),
+		openmetrics.WithServerHandlingTimeHistogram(),
 	)
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(serverMetrics)
+	registry.MustRegister(metrics)
 
-	// Set up the following middlewares on unary and stream RPCs:
-	//- metrics
-	//- auth
-	//- logging
-	//- tracing
+	limiter := server.NewRateLimiter()
+	// Set up the following middlewares on unary/stream RPC requests:
+	// - metrics
+	// - auth
+	// - rate limiting
+	// - logging
+	// - tracing
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
-			metrics.UnaryServerInterceptor(serverMetrics),
+			openmetrics.UnaryServerInterceptor(metrics),
 			auth.UnaryServerInterceptor(server.Authorize),
-			unaryInterceptor,
+			ratelimit.UnaryServerInterceptor(limiter),
+			customUnaryInterceptor,
 		),
 		grpc.ChainStreamInterceptor(
-			metrics.StreamServerInterceptor(serverMetrics),
+			openmetrics.StreamServerInterceptor(metrics),
 			auth.StreamServerInterceptor(server.Authorize),
-			streamInterceptor,
+			ratelimit.StreamServerInterceptor(limiter),
+			customStreamInterceptor,
 		),
 	)
-	serverMetrics.InitializeMetrics(srv)
+	metrics.InitializeMetrics(srv)
 
 	ctx := context.Background()
 
 	// Register service RPCs on server
-	registerUserService(ctx, srv, mongoDb)
-	registerProductService(ctx, srv, mongoDb)
+	registerUserService(ctx, srv, postgres)
+	registerProductService(ctx, srv, postgres)
 
 	// Enable grpc reflection for grpcurl
 	reflection.Register(srv)
@@ -82,6 +87,7 @@ func main() {
 		srv.Stop()
 	})
 
+	// Setup metrics endpoint served over http
 	httpSrv := &http.Server{Addr: httpAddr}
 	g.Add(
 		func() error {
@@ -106,58 +112,60 @@ func main() {
 	}
 }
 
-func unaryInterceptor(
+func customUnaryInterceptor(
 	ctx context.Context,
 	req any,
 	info *grpc.UnaryServerInfo,
 	handler grpc.UnaryHandler,
 ) (any, error) {
-	logrus.Info(info.FullMethod + " requested")
+	logrus.Info(info.FullMethod + " requested.")
 	return handler(ctx, req)
 }
 
-func streamInterceptor(
+func customStreamInterceptor(
 	srv any,
 	stream grpc.ServerStream,
 	info *grpc.StreamServerInfo,
 	handler grpc.StreamHandler) error {
-	logrus.Info(info.FullMethod + " requested")
+	logrus.Info(info.FullMethod + " requested.")
 	return handler(srv, stream)
 }
 
+// This is for the purposes of demo. Remove in individual implementation.
 func registerUserService(
 	ctx context.Context,
 	srv *grpc.Server,
 	databaseType databaseType,
 ) {
 	switch databaseType {
-	case firebaseDb:
-		server.RegisterFirebaseUserService(ctx, srv)
-	case mongoDb:
-		server.RegisterMongoUserService(ctx, srv)
-	case mysql:
-		log.Fatalf("database type %s not supported", databaseType)
 	case postgres:
-		log.Fatalf("database type %s not supported", databaseType)
+		server.RegisterPostgresUserService(ctx, srv)
+	case mysql:
+		server.RegisterMySqlUserService(ctx, srv)
+	case firebase:
+		server.RegisterFirebaseUserService(ctx, srv)
+	case mongo:
+		server.RegisterMongoUserService(ctx, srv)
 	default:
 		log.Fatalf("database type %s not supported", databaseType)
 	}
 }
 
+// This is for the purposes of demo. Remove in individual implementation.
 func registerProductService(
 	ctx context.Context,
 	srv *grpc.Server,
 	databaseType databaseType,
 ) {
 	switch databaseType {
-	case firebaseDb:
-		server.RegisterFirebaseProductService(ctx, srv)
-	case mongoDb:
-		server.RegisterMongoProductService(ctx, srv)
-	case mysql:
-		log.Fatalf("database type %s not supported", databaseType)
 	case postgres:
-		log.Fatalf("database type %s not supported", databaseType)
+		server.RegisterPostgresProductService(ctx, srv)
+	case mysql:
+		server.RegisterMySqlProductService(ctx, srv)
+	case firebase:
+		server.RegisterFirebaseProductService(ctx, srv)
+	case mongo:
+		server.RegisterMongoProductService(ctx, srv)
 	default:
 		log.Fatalf("database type %s not supported", databaseType)
 	}

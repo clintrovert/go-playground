@@ -12,7 +12,7 @@ scrape_configs:
     # scheme defaults to 'http'.
 
     static_configs:
-      - targets: ['docker.for.mac.localhost:9095']
+      - targets: ['docker.for.mac.localhost:8088']
 
   - job_name: 'docker'
       # metrics_path defaults to '/metrics'
