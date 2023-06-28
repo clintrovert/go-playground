@@ -2,12 +2,14 @@ package v1
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"net/mail"
 	"strings"
 
 	"github.com/clintrovert/go-playground/api/model"
+	"github.com/clintrovert/go-playground/internal/postgres/database"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
@@ -21,7 +23,7 @@ const (
 
 var (
 	ErrUserAuthFailed      = errors.New("user authentication failed")
-	ErrUserIdMissing       = errors.New("user id was not specified")
+	ErrUserIdInvalid       = errors.New("user id was not specified")
 	ErrUserEmailMissing    = errors.New("user email was not specified")
 	ErrUserEmailInvalid    = errors.New("user email was invalid")
 	ErrUserNameMissing     = errors.New("user name was not specified")
@@ -34,13 +36,13 @@ var (
 // UserDatabase provides database operations for Users.
 type UserDatabase interface {
 	// GetUser retrieves a User by their ID from the database.
-	GetUser(ctx context.Context, id string) (*model.User, error)
+	GetUser(ctx context.Context, id int32) (database.User, error)
 	// CreateUser creates a new User in the database.
-	CreateUser(ctx context.Context, user *model.User) error
+	CreateUser(ctx context.Context, params database.CreateUserParams) error
 	// UpdateUser updates an existing User in the database.
-	UpdateUser(ctx context.Context, user *model.User) error
+	UpdateUser(ctx context.Context, params database.UpdateUserParams) error
 	// DeleteUser deletes a User from the database.
-	DeleteUser(ctx context.Context, id string) error
+	DeleteUser(ctx context.Context, id int32) error
 }
 
 // UserService provides functionality to manage Users.
@@ -90,7 +92,11 @@ func (s *UserService) GetUser(
 	}
 
 	return &model.GetUserResponse{
-		User: user,
+		User: &model.User{
+			Id:    user.UserID,
+			Name:  user.Name.String,
+			Email: user.Email.String,
+		},
 	}, nil
 }
 
@@ -116,10 +122,19 @@ func (s *UserService) CreateUser(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	user := &model.User{
-		Name:     strings.TrimSpace(request.Name),
-		Email:    strings.TrimSpace(request.Email),
-		Password: string(encrypted),
+	user := database.CreateUserParams{
+		Name: sql.NullString{
+			String: strings.TrimSpace(request.Name),
+			Valid:  true,
+		},
+		Email: sql.NullString{
+			String: strings.TrimSpace(request.Email),
+			Valid:  true,
+		},
+		Password: sql.NullString{
+			String: string(encrypted),
+			Valid:  true,
+		},
 	}
 
 	if err = s.db.CreateUser(ctx, user); err != nil {
@@ -154,16 +169,25 @@ func (s *UserService) UpdateUser(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	user := &model.User{
-		Id:       strings.TrimSpace(request.Id),
-		Name:     strings.TrimSpace(request.Name),
-		Email:    strings.TrimSpace(request.Email),
-		Password: string(encrypted),
+	user := database.UpdateUserParams{
+		UserID: request.Id,
+		Name: sql.NullString{
+			String: strings.TrimSpace(request.Name),
+			Valid:  true,
+		},
+		Email: sql.NullString{
+			String: strings.TrimSpace(request.Email),
+			Valid:  true,
+		},
+		Password: sql.NullString{
+			String: string(encrypted),
+			Valid:  true,
+		},
 	}
 
 	if err = s.db.UpdateUser(ctx, user); err != nil {
 		s.log.
-			WithField(userLogField, user.Id).
+			WithField(userLogField, fmt.Sprintf("%v", user.UserID)).
 			Error(err)
 		return nil, status.Error(codes.Internal, ErrUserUpdateFailed.Error())
 	}
@@ -197,8 +221,8 @@ func (s *UserService) DeleteUser(
 }
 
 func validateGetUserRequest(request *model.GetUserRequest) error {
-	if strings.TrimSpace(request.UserId) == "" {
-		return ErrUserIdMissing
+	if request.UserId > 0 {
+		return ErrUserIdInvalid
 	}
 
 	return nil
@@ -224,9 +248,6 @@ func validateCreateUserRequest(request *model.CreateUserRequest) error {
 }
 
 func validateUpdateUserRequest(request *model.UpdateUserRequest) error {
-	if strings.TrimSpace(request.Id) == "" {
-		return ErrUserIdMissing
-	}
 	if strings.TrimSpace(request.Name) == "" {
 		return ErrUserNameMissing
 	}
@@ -245,8 +266,8 @@ func validateUpdateUserRequest(request *model.UpdateUserRequest) error {
 }
 
 func validateDeleteUserRequest(request *model.DeleteUserRequest) error {
-	if strings.TrimSpace(request.UserId) == "" {
-		return ErrUserIdMissing
+	if request.UserId > 0 {
+		return ErrUserIdInvalid
 	}
 
 	return nil

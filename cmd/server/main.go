@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"log"
+	"database/sql"
 	"net/http"
 	"os"
 
+	"github.com/clintrovert/go-playground/internal/postgres/database"
 	"github.com/clintrovert/go-playground/internal/server"
-	"github.com/clintrovert/go-playground/pkg/firedb"
 	openmetrics "github.com/grpc-ecosystem/go-grpc-middleware/providers/openmetrics/v2"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/ratelimit"
@@ -18,17 +18,11 @@ import (
 	"google.golang.org/grpc/reflection"
 )
 
-// This is for the purposes of demo. Remove in individual implementation.
-type databaseType string
-
 const (
-	mysql      databaseType = "mysql"
-	mongo      databaseType = "mongodb"
-	firebasedb databaseType = "firebasedb"
-	postgres   databaseType = "postgres"
-
-	grpcAddr = ":9099"
-	httpAddr = ":8088"
+	driver     = "postgres"
+	connEnvVar = "POSTGRES_CONN_STR"
+	grpcAddr   = ":9099"
+	httpAddr   = ":8088"
 )
 
 func main() {
@@ -43,6 +37,16 @@ func main() {
 	recoveryOpts := []recovery.Option{
 		recovery.WithRecoveryHandler(server.Recover),
 	}
+
+	// Open a connection to the database cluster.
+	connStr := os.Getenv(connEnvVar)
+	postgres, err := sql.Open(driver, connStr)
+	if err != nil {
+		panic(err)
+	}
+
+	defer postgres.Close()
+	db := database.New(postgres)
 
 	// Set up the following middlewares on unary/stream requests, (ordering of
 	// these matters to some extent):
@@ -75,8 +79,8 @@ func main() {
 	ctx := context.Background()
 
 	// Register service RPCs on server
-	registerUserService(ctx, grpcServer, postgres)
-	registerProductService(ctx, grpcServer, postgres)
+	server.RegisterPostgresUserService(ctx, grpcServer, db)
+	server.RegisterPostgresProductService(ctx, grpcServer)
 
 	// Enable grpc reflection for grpcurl
 	reflection.Register(grpcServer)
@@ -85,48 +89,7 @@ func main() {
 	g.Add(server.ServeGrpc(grpcServer, grpcAddr))
 	g.Add(server.ServeHttp(httpServer, registry))
 
-	if err := g.Run(); err != nil {
+	if err = g.Run(); err != nil {
 		os.Exit(1)
-	}
-}
-
-// This is for the purposes of demo. Remove in individual implementation.
-func registerUserService(
-	ctx context.Context,
-	srv *grpc.Server,
-	databaseType databaseType,
-) {
-	switch databaseType {
-	case postgres:
-		server.RegisterPostgresUserService(ctx, srv)
-	case mysql:
-		server.RegisterMySqlUserService(ctx, srv)
-	case firebasedb:
-		database, _ := firedb.NewDatabase(ctx)
-		server.RegisterFirebaseUserService(ctx, srv, database)
-	case mongo:
-		server.RegisterMongoUserService(ctx, srv)
-	default:
-		log.Fatalf("database type %s not supported", databaseType)
-	}
-}
-
-// This is for the purposes of demo. Remove in individual implementation.
-func registerProductService(
-	ctx context.Context,
-	srv *grpc.Server,
-	databaseType databaseType,
-) {
-	switch databaseType {
-	case postgres:
-		server.RegisterPostgresProductService(ctx, srv)
-	case mysql:
-		server.RegisterMySqlProductService(ctx, srv)
-	case firebasedb:
-		server.RegisterFirebaseProductService(ctx, srv)
-	case mongo:
-		server.RegisterMongoProductService(ctx, srv)
-	default:
-		log.Fatalf("database type %s not supported", databaseType)
 	}
 }
