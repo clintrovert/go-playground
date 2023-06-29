@@ -8,49 +8,49 @@ import (
 	context "context"
 	reflect "reflect"
 
-	"github.com/clintrovert/go-playground/api/model"
+	database "github.com/clintrovert/go-playground/internal/postgres/database"
 	gomock "github.com/golang/mock/gomock"
 )
 
-// MockUserDataManager is a mock of UserDataManager interface.
-type MockUserDataManager struct {
+// MockUserDatabase is a mock of UserDatabase interface.
+type MockUserDatabase struct {
 	ctrl     *gomock.Controller
-	recorder *MockUserDataManagerMockRecorder
+	recorder *MockUserDatabaseMockRecorder
 }
 
-// MockUserDataManagerMockRecorder is the mock recorder for MockUserDataManager.
-type MockUserDataManagerMockRecorder struct {
-	mock *MockUserDataManager
+// MockUserDatabaseMockRecorder is the mock recorder for MockUserDatabase.
+type MockUserDatabaseMockRecorder struct {
+	mock *MockUserDatabase
 }
 
-// NewMockUserDataManager creates a new mock instance.
-func NewMockUserDataManager(ctrl *gomock.Controller) *MockUserDataManager {
-	mock := &MockUserDataManager{ctrl: ctrl}
-	mock.recorder = &MockUserDataManagerMockRecorder{mock}
+// NewMockUserDatabase creates a new mock instance.
+func NewMockUserDatabase(ctrl *gomock.Controller) *MockUserDatabase {
+	mock := &MockUserDatabase{ctrl: ctrl}
+	mock.recorder = &MockUserDatabaseMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockUserDataManager) EXPECT() *MockUserDataManagerMockRecorder {
+func (m *MockUserDatabase) EXPECT() *MockUserDatabaseMockRecorder {
 	return m.recorder
 }
 
 // CreateUser mocks base method.
-func (m *MockUserDataManager) CreateUser(ctx context.Context, user *model.User) error {
+func (m *MockUserDatabase) CreateUser(ctx context.Context, params database.CreateUserParams) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateUser", ctx, user)
+	ret := m.ctrl.Call(m, "CreateUser", ctx, params)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateUser indicates an expected call of CreateUser.
-func (mr *MockUserDataManagerMockRecorder) CreateUser(ctx, user interface{}) *gomock.Call {
+func (mr *MockUserDatabaseMockRecorder) CreateUser(ctx, params interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUser", reflect.TypeOf((*MockUserDataManager)(nil).CreateUser), ctx, user)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateUser", reflect.TypeOf((*MockUserDatabase)(nil).CreateUser), ctx, params)
 }
 
 // DeleteUser mocks base method.
-func (m *MockUserDataManager) DeleteUser(ctx context.Context, id string) error {
+func (m *MockUserDatabase) DeleteUser(ctx context.Context, id int32) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteUser", ctx, id)
 	ret0, _ := ret[0].(error)
@@ -58,36 +58,36 @@ func (m *MockUserDataManager) DeleteUser(ctx context.Context, id string) error {
 }
 
 // DeleteUser indicates an expected call of DeleteUser.
-func (mr *MockUserDataManagerMockRecorder) DeleteUser(ctx, id interface{}) *gomock.Call {
+func (mr *MockUserDatabaseMockRecorder) DeleteUser(ctx, id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUser", reflect.TypeOf((*MockUserDataManager)(nil).DeleteUser), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteUser", reflect.TypeOf((*MockUserDatabase)(nil).DeleteUser), ctx, id)
 }
 
 // GetUser mocks base method.
-func (m *MockUserDataManager) GetUser(ctx context.Context, id string) (*model.User, error) {
+func (m *MockUserDatabase) GetUser(ctx context.Context, id int32) (database.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUser", ctx, id)
-	ret0, _ := ret[0].(*model.User)
+	ret0, _ := ret[0].(database.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetUser indicates an expected call of GetUser.
-func (mr *MockUserDataManagerMockRecorder) GetUser(ctx, id interface{}) *gomock.Call {
+func (mr *MockUserDatabaseMockRecorder) GetUser(ctx, id interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUser", reflect.TypeOf((*MockUserDataManager)(nil).GetUser), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUser", reflect.TypeOf((*MockUserDatabase)(nil).GetUser), ctx, id)
 }
 
 // UpdateUser mocks base method.
-func (m *MockUserDataManager) UpdateUser(ctx context.Context, user *model.User) error {
+func (m *MockUserDatabase) UpdateUser(ctx context.Context, params database.UpdateUserParams) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateUser", ctx, user)
+	ret := m.ctrl.Call(m, "UpdateUser", ctx, params)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UpdateUser indicates an expected call of UpdateUser.
-func (mr *MockUserDataManagerMockRecorder) UpdateUser(ctx, user interface{}) *gomock.Call {
+func (mr *MockUserDatabaseMockRecorder) UpdateUser(ctx, params interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUser", reflect.TypeOf((*MockUserDataManager)(nil).UpdateUser), ctx, user)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUser", reflect.TypeOf((*MockUserDatabase)(nil).UpdateUser), ctx, params)
 }

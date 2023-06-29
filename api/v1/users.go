@@ -221,7 +221,7 @@ func (s *UserService) DeleteUser(
 }
 
 func validateGetUserRequest(request *model.GetUserRequest) error {
-	if request.UserId > 0 {
+	if request.UserId < 1 {
 		return ErrUserIdInvalid
 	}
 

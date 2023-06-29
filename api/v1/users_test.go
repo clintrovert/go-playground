@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/clintrovert/go-playground/api/model"
+	"github.com/clintrovert/go-playground/internal/postgres/database"
 	"github.com/clintrovert/go-playground/internal/test/mocks"
 	"github.com/clintrovert/go-playground/internal/test/utils"
 	"github.com/golang/mock/gomock"
@@ -14,20 +15,20 @@ import (
 )
 
 type testUserService struct {
-	service *UserService
-	ctx     context.Context
-	manager *mocks.MockUserDataManager
+	service  *UserService
+	ctx      context.Context
+	database *mocks.MockUserDatabase
 }
 
 func newTestUserService(t *testing.T) *testUserService {
 	ctrl := gomock.NewController(t)
-	manager := mocks.NewMockUserDataManager(ctrl)
+	manager := mocks.NewMockUserDatabase(ctrl)
 	service, _ := NewUserService(manager, logrus.New())
 
 	return &testUserService{
-		manager: manager,
-		service: service,
-		ctx:     context.Background(),
+		database: manager,
+		service:  service,
+		ctx:      context.Background(),
 	}
 }
 
@@ -35,11 +36,11 @@ func TestGetUser_ValidRequest_ShouldSucceed(t *testing.T) {
 	tester := newTestUserService(t)
 	expected := utils.GenerateRandomUser()
 	request := &model.GetUserRequest{
-		UserId: expected.Id,
+		UserId: expected.UserID,
 	}
 
-	tester.manager.EXPECT().
-		GetUser(tester.ctx, expected.Id).
+	tester.database.EXPECT().
+		GetUser(tester.ctx, expected.UserID).
 		Return(expected, nil).
 		Times(1)
 
@@ -51,7 +52,7 @@ func TestGetUser_ValidRequest_ShouldSucceed(t *testing.T) {
 func TestGetUser_InvalidRequest_ShouldError(t *testing.T) {
 	tester := newTestUserService(t)
 	request := &model.GetUserRequest{
-		UserId: "",
+		UserId: -1,
 	}
 
 	response, err := tester.service.GetUser(tester.ctx, request)
@@ -63,12 +64,12 @@ func TestGetUser_DbGetUserError_ShouldError(t *testing.T) {
 	tester := newTestUserService(t)
 	expected := utils.GenerateRandomUser()
 	request := &model.GetUserRequest{
-		UserId: expected.Id,
+		UserId: expected.UserID,
 	}
 
-	tester.manager.EXPECT().
-		GetUser(tester.ctx, expected.Id).
-		Return(nil, errors.New("test-error")).
+	tester.database.EXPECT().
+		GetUser(tester.ctx, expected.UserID).
+		Return(database.User{}, errors.New("test-error")).
 		Times(1)
 
 	response, err := tester.service.GetUser(tester.ctx, request)
@@ -79,15 +80,15 @@ func TestGetUser_DbGetUserError_ShouldError(t *testing.T) {
 func TestCreateUser_ValidRequest_ShouldSucceed(t *testing.T) {
 	tester := newTestUserService(t)
 	expected := utils.GenerateRandomUser()
-	expected.Id = ""
+	expected.UserID = 1
 
 	request := &model.CreateUserRequest{
-		Name:     expected.Name,
-		Email:    expected.Email,
-		Password: expected.Password,
+		Name:     expected.Name.String,
+		Email:    expected.Email.String,
+		Password: expected.Password.String,
 	}
 
-	tester.manager.EXPECT().
+	tester.database.EXPECT().
 		CreateUser(tester.ctx, gomock.Any()).
 		Return(nil).
 		Times(1)
@@ -96,8 +97,8 @@ func TestCreateUser_ValidRequest_ShouldSucceed(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func assertUserEqual(t *testing.T, expected *model.User, actual *model.User) {
-	assert.Equal(t, expected.Id, actual.Id)
-	assert.Equal(t, expected.Name, actual.Name)
-	assert.Equal(t, expected.Email, actual.Email)
+func assertUserEqual(t *testing.T, expected database.User, actual *model.User) {
+	assert.Equal(t, expected.UserID, actual.Id)
+	assert.Equal(t, expected.Name.String, actual.Name)
+	assert.Equal(t, expected.Email.String, actual.Email)
 }
