@@ -8,7 +8,7 @@ import (
 	context "context"
 	reflect "reflect"
 
-	database "github.com/clintrovert/go-playground/internal/postgres/database"
+	database2 "github.com/clintrovert/go-playground/pkg/postgres/database"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -36,7 +36,7 @@ func (m *MockUserDatabase) EXPECT() *MockUserDatabaseMockRecorder {
 }
 
 // CreateUser mocks base method.
-func (m *MockUserDatabase) CreateUser(ctx context.Context, params database.CreateUserParams) error {
+func (m *MockUserDatabase) CreateUser(ctx context.Context, params database2.CreateUserParams) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateUser", ctx, params)
 	ret0, _ := ret[0].(error)
@@ -64,10 +64,10 @@ func (mr *MockUserDatabaseMockRecorder) DeleteUser(ctx, id interface{}) *gomock.
 }
 
 // GetUser mocks base method.
-func (m *MockUserDatabase) GetUser(ctx context.Context, id int32) (database.User, error) {
+func (m *MockUserDatabase) GetUser(ctx context.Context, id int32) (database2.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetUser", ctx, id)
-	ret0, _ := ret[0].(database.User)
+	ret0, _ := ret[0].(database2.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -79,7 +79,7 @@ func (mr *MockUserDatabaseMockRecorder) GetUser(ctx, id interface{}) *gomock.Cal
 }
 
 // UpdateUser mocks base method.
-func (m *MockUserDatabase) UpdateUser(ctx context.Context, params database.UpdateUserParams) error {
+func (m *MockUserDatabase) UpdateUser(ctx context.Context, params database2.UpdateUserParams) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "UpdateUser", ctx, params)
 	ret0, _ := ret[0].(error)

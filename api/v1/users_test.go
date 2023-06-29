@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/clintrovert/go-playground/api/model"
-	"github.com/clintrovert/go-playground/internal/postgres/database"
 	"github.com/clintrovert/go-playground/internal/test/mocks"
 	"github.com/clintrovert/go-playground/internal/test/utils"
+	"github.com/clintrovert/go-playground/pkg/postgres/database"
 	"github.com/golang/mock/gomock"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"

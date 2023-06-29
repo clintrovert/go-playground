@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"math/rand"
 
-	"github.com/clintrovert/go-playground/internal/postgres/database"
+	"github.com/clintrovert/go-playground/pkg/postgres/database"
 )
 
 var alphabet = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")

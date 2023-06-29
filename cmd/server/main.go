@@ -1,13 +1,12 @@
 package main
 
 import (
-	"context"
 	"database/sql"
 	"net/http"
 	"os"
 
-	"github.com/clintrovert/go-playground/internal/postgres/database"
 	"github.com/clintrovert/go-playground/internal/server"
+	"github.com/clintrovert/go-playground/pkg/postgres/database"
 	openmetrics "github.com/grpc-ecosystem/go-grpc-middleware/providers/openmetrics/v2"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/ratelimit"
@@ -38,16 +37,6 @@ func main() {
 		recovery.WithRecoveryHandler(server.Recover),
 	}
 
-	// Open a connection to the database cluster.
-	connStr := os.Getenv(connEnvVar)
-	postgres, err := sql.Open(driver, connStr)
-	if err != nil {
-		panic(err)
-	}
-
-	defer postgres.Close()
-	db := database.New(postgres)
-
 	// Set up the following middlewares on unary/stream requests, (ordering of
 	// these matters to some extent):
 	// - metrics
@@ -76,11 +65,11 @@ func main() {
 	httpServer := &http.Server{Addr: httpAddr}
 
 	metrics.InitializeMetrics(grpcServer)
-	ctx := context.Background()
+	db := getDatabase()
 
 	// Register service RPCs on server
-	server.RegisterPostgresUserService(ctx, grpcServer, db)
-	server.RegisterPostgresProductService(ctx, grpcServer)
+	server.RegisterUserService(grpcServer, db)
+	server.RegisterProductService(grpcServer, db)
 
 	// Enable grpc reflection for grpcurl
 	reflection.Register(grpcServer)
@@ -89,7 +78,18 @@ func main() {
 	g.Add(server.ServeGrpc(grpcServer, grpcAddr))
 	g.Add(server.ServeHttp(httpServer, registry))
 
-	if err = g.Run(); err != nil {
+	if err := g.Run(); err != nil {
 		os.Exit(1)
 	}
+}
+
+func getDatabase() *database.Queries {
+	// Open a connection to the database cluster.
+	connStr := os.Getenv(connEnvVar)
+	postgres, err := sql.Open(driver, connStr)
+	if err != nil {
+		panic(err)
+	}
+
+	return database.New(postgres)
 }

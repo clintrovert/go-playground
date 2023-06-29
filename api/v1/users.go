@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/clintrovert/go-playground/api/model"
-	"github.com/clintrovert/go-playground/internal/postgres/database"
+	database2 "github.com/clintrovert/go-playground/pkg/postgres/database"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
@@ -36,11 +36,11 @@ var (
 // UserDatabase provides database operations for Users.
 type UserDatabase interface {
 	// GetUser retrieves a User by their ID from the database.
-	GetUser(ctx context.Context, id int32) (database.User, error)
+	GetUser(ctx context.Context, id int32) (database2.User, error)
 	// CreateUser creates a new User in the database.
-	CreateUser(ctx context.Context, params database.CreateUserParams) error
+	CreateUser(ctx context.Context, params database2.CreateUserParams) error
 	// UpdateUser updates an existing User in the database.
-	UpdateUser(ctx context.Context, params database.UpdateUserParams) error
+	UpdateUser(ctx context.Context, params database2.UpdateUserParams) error
 	// DeleteUser deletes a User from the database.
 	DeleteUser(ctx context.Context, id int32) error
 }
@@ -122,7 +122,7 @@ func (s *UserService) CreateUser(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	user := database.CreateUserParams{
+	user := database2.CreateUserParams{
 		Name: sql.NullString{
 			String: strings.TrimSpace(request.Name),
 			Valid:  true,
@@ -169,7 +169,7 @@ func (s *UserService) UpdateUser(
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	user := database.UpdateUserParams{
+	user := database2.UpdateUserParams{
 		UserID: request.Id,
 		Name: sql.NullString{
 			String: strings.TrimSpace(request.Name),
