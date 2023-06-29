@@ -22,7 +22,7 @@ func RandomPrefixedString(prefix string, n int) string {
 
 func GenerateRandomUser() *model.User {
 	return &model.User{
-		Id:   RandomPrefixedString("id", 10),
+		Id:   int32(rand.Intn(1000)),
 		Name: RandomPrefixedString("name", 10),
 		Email: RandomPrefixedString("email", 5) +
 			"@" + RandomPrefixedString("domain", 5) + ".com",
