@@ -12,7 +12,7 @@ import (
 
 const createUser = `-- name: CreateUser :exec
 INSERT INTO users (
-    user_id, name, email, password, created_at, updated_at
+    user_id, name, email, password, created_at, modified_at
 ) VALUES (
     $1, $2, $3, $4, now()::timestamp, now()::timestamp
 )
@@ -35,6 +35,16 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 	return err
 }
 
+const deleteProduct = `-- name: DeleteProduct :exec
+DELETE FROM products
+WHERE product_id = $1
+`
+
+func (q *Queries) DeleteProduct(ctx context.Context, productID int32) error {
+	_, err := q.db.ExecContext(ctx, deleteProduct, productID)
+	return err
+}
+
 const deleteUser = `-- name: DeleteUser :exec
 DELETE FROM users
 WHERE user_id = $1
@@ -43,6 +53,24 @@ WHERE user_id = $1
 func (q *Queries) DeleteUser(ctx context.Context, userID int32) error {
 	_, err := q.db.ExecContext(ctx, deleteUser, userID)
 	return err
+}
+
+const getProduct = `-- name: GetProduct :one
+SELECT product_id, name, price, created_at, modified_at FROM products
+WHERE product_id = $1 LIMIT 1
+`
+
+func (q *Queries) GetProduct(ctx context.Context, productID int32) (Product, error) {
+	row := q.db.QueryRowContext(ctx, getProduct, productID)
+	var i Product
+	err := row.Scan(
+		&i.ProductID,
+		&i.Name,
+		&i.Price,
+		&i.CreatedAt,
+		&i.ModifiedAt,
+	)
+	return i, err
 }
 
 const getUser = `-- name: GetUser :one
@@ -64,9 +92,26 @@ func (q *Queries) GetUser(ctx context.Context, userID int32) (User, error) {
 	return i, err
 }
 
+const updateProduct = `-- name: UpdateProduct :exec
+UPDATE products SET
+     name = $1, price = $2, modified_at = now()::timestamp
+WHERE product_id = $3
+`
+
+type UpdateProductParams struct {
+	Name      sql.NullString
+	Price     sql.NullInt32
+	ProductID int32
+}
+
+func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) error {
+	_, err := q.db.ExecContext(ctx, updateProduct, arg.Name, arg.Price, arg.ProductID)
+	return err
+}
+
 const updateUser = `-- name: UpdateUser :exec
 UPDATE users SET
-    name = $1, email = $2, password = $3, updated_at = now()::timestamp
+    name = $1, email = $2, password = $3, modified_at = now()::timestamp
 WHERE user_id = $4
 `
 
