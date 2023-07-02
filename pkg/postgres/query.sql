@@ -30,3 +30,10 @@ WHERE product_id = $1;
 UPDATE products SET
      name = $1, price = $2, modified_at = now()::timestamp
 WHERE product_id = $3;
+
+-- name: CreateProduct :exec
+INSERT INTO products (
+    product_id, name, price, created_at, modified_at
+) VALUES (
+     $1, $2, $3, now()::timestamp, now()::timestamp
+ );

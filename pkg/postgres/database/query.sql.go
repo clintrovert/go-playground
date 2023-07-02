@@ -10,6 +10,25 @@ import (
 	"database/sql"
 )
 
+const createProduct = `-- name: CreateProduct :exec
+INSERT INTO products (
+    product_id, name, price, created_at, modified_at
+) VALUES (
+     $1, $2, $3, now()::timestamp, now()::timestamp
+ )
+`
+
+type CreateProductParams struct {
+	ProductID int32
+	Name      sql.NullString
+	Price     sql.NullInt32
+}
+
+func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) error {
+	_, err := q.db.ExecContext(ctx, createProduct, arg.ProductID, arg.Name, arg.Price)
+	return err
+}
+
 const createUser = `-- name: CreateUser :exec
 INSERT INTO users (
     user_id, name, email, password, created_at, modified_at
