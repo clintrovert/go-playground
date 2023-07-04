@@ -23,6 +23,7 @@ type User struct {
 	Password   sql.NullString
 	CreatedAt  sql.NullTime
 	ModifiedAt sql.NullTime
+	IsAdmin    sql.NullBool
 }
 
 type UserProduct struct {

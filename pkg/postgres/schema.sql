@@ -9,6 +9,7 @@ CREATE TABLE users
     password VARCHAR(30),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     modified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_admin BOOLEAN,
     PRIMARY KEY(user_id)
 );
 

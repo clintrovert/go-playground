@@ -93,9 +93,10 @@ func (s *UserService) GetUser(
 
 	return &model.GetUserResponse{
 		User: &model.User{
-			Id:    user.UserID,
-			Name:  user.Name.String,
-			Email: user.Email.String,
+			Id:      user.UserID,
+			Name:    user.Name.String,
+			Email:   user.Email.String,
+			IsAdmin: user.IsAdmin.Bool,
 		},
 	}, nil
 }
@@ -134,6 +135,10 @@ func (s *UserService) CreateUser(
 		Password: sql.NullString{
 			String: string(encrypted),
 			Valid:  true,
+		},
+		IsAdmin: sql.NullBool{
+			Bool:  request.IsAdmin,
+			Valid: true,
 		},
 	}
 
@@ -182,6 +187,10 @@ func (s *UserService) UpdateUser(
 		Password: sql.NullString{
 			String: string(encrypted),
 			Valid:  true,
+		},
+		IsAdmin: sql.NullBool{
+			Bool:  request.IsAdmin,
+			Valid: true,
 		},
 	}
 

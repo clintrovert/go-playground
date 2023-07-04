@@ -8,14 +8,14 @@ WHERE user_id = $1;
 
 -- name: UpdateUser :exec
 UPDATE users SET
-    name = $1, email = $2, password = $3, modified_at = now()::timestamp
-WHERE user_id = $4;
+    name = $1, email = $2, password = $3, is_admin = $4, modified_at = now()::timestamp
+WHERE user_id = $5;
 
 -- name: CreateUser :exec
 INSERT INTO users (
-    user_id, name, email, password, created_at, modified_at
+    user_id, name, email, password, is_admin, created_at, modified_at
 ) VALUES (
-    $1, $2, $3, $4, now()::timestamp, now()::timestamp
+    $1, $2, $3, $4, $5, now()::timestamp, now()::timestamp
 );
 
 -- name: GetProduct :one

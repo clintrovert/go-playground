@@ -31,9 +31,9 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) er
 
 const createUser = `-- name: CreateUser :exec
 INSERT INTO users (
-    user_id, name, email, password, created_at, modified_at
+    user_id, name, email, password, is_admin, created_at, modified_at
 ) VALUES (
-    $1, $2, $3, $4, now()::timestamp, now()::timestamp
+    $1, $2, $3, $4, $5, now()::timestamp, now()::timestamp
 )
 `
 
@@ -42,6 +42,7 @@ type CreateUserParams struct {
 	Name     sql.NullString
 	Email    sql.NullString
 	Password sql.NullString
+	IsAdmin  sql.NullBool
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
@@ -50,6 +51,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 		arg.Name,
 		arg.Email,
 		arg.Password,
+		arg.IsAdmin,
 	)
 	return err
 }
@@ -93,7 +95,7 @@ func (q *Queries) GetProduct(ctx context.Context, productID int32) (Product, err
 }
 
 const getUser = `-- name: GetUser :one
-SELECT user_id, name, email, password, created_at, modified_at FROM users
+SELECT user_id, name, email, password, created_at, modified_at, is_admin FROM users
 WHERE user_id = $1 LIMIT 1
 `
 
@@ -107,6 +109,7 @@ func (q *Queries) GetUser(ctx context.Context, userID int32) (User, error) {
 		&i.Password,
 		&i.CreatedAt,
 		&i.ModifiedAt,
+		&i.IsAdmin,
 	)
 	return i, err
 }
@@ -130,14 +133,15 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) er
 
 const updateUser = `-- name: UpdateUser :exec
 UPDATE users SET
-    name = $1, email = $2, password = $3, modified_at = now()::timestamp
-WHERE user_id = $4
+    name = $1, email = $2, password = $3, is_admin = $4, modified_at = now()::timestamp
+WHERE user_id = $5
 `
 
 type UpdateUserParams struct {
 	Name     sql.NullString
 	Email    sql.NullString
 	Password sql.NullString
+	IsAdmin  sql.NullBool
 	UserID   int32
 }
 
@@ -146,6 +150,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
 		arg.Name,
 		arg.Email,
 		arg.Password,
+		arg.IsAdmin,
 		arg.UserID,
 	)
 	return err
