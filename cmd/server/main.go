@@ -37,6 +37,8 @@ func main() {
 		recovery.WithRecoveryHandler(server.Recover),
 	}
 
+	cache := server.CacheInterceptor{}
+
 	// Set up the following middlewares on unary/stream requests, (ordering of
 	// these matters to some extent):
 	// - metrics
@@ -45,6 +47,7 @@ func main() {
 	// - logging
 	// - req validation
 	// - tracing
+	// - caching
 	// - custom
 	grpcServer := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
@@ -52,6 +55,7 @@ func main() {
 			auth.UnaryServerInterceptor(server.Authorize),
 			ratelimit.UnaryServerInterceptor(limiter),
 			recovery.UnaryServerInterceptor(recoveryOpts...),
+			cache.UnaryServerInterceptor(nil),
 			server.CustomUnaryInterceptor,
 		),
 		grpc.ChainStreamInterceptor(
@@ -59,6 +63,7 @@ func main() {
 			auth.StreamServerInterceptor(server.Authorize),
 			ratelimit.StreamServerInterceptor(limiter),
 			recovery.StreamServerInterceptor(recoveryOpts...),
+			cache.StreamServerInterceptor(nil),
 			server.CustomStreamInterceptor,
 		),
 	)
