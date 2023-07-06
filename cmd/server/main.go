@@ -4,15 +4,18 @@ import (
 	"database/sql"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/clintrovert/go-playground/internal/server"
 	"github.com/clintrovert/go-playground/pkg/postgres/database"
+	"github.com/clintrovert/go-playground/pkg/rediscache"
 	openmetrics "github.com/grpc-ecosystem/go-grpc-middleware/providers/openmetrics/v2"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/ratelimit"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -22,6 +25,10 @@ const (
 	connEnvVar = "POSTGRES_CONN_STR"
 	grpcAddr   = ":9099"
 	httpAddr   = ":8088"
+)
+
+var (
+	cacheTtl = time.Hour
 )
 
 func main() {
@@ -37,7 +44,8 @@ func main() {
 		recovery.WithRecoveryHandler(server.Recover),
 	}
 
-	cache := server.CacheInterceptor{}
+	rdb := rediscache.NewRedisCache()
+	cache := server.NewKeyValCacheInterceptor(rdb, logrus.NewEntry(logrus.New()))
 
 	// Set up the following middlewares on unary/stream requests, (ordering of
 	// these matters to some extent):
@@ -55,7 +63,7 @@ func main() {
 			auth.UnaryServerInterceptor(server.Authorize),
 			ratelimit.UnaryServerInterceptor(limiter),
 			recovery.UnaryServerInterceptor(recoveryOpts...),
-			cache.UnaryServerInterceptor(nil),
+			cache.UnaryServerInterceptor(rediscache.GenerateRedisKey, cacheTtl),
 			server.CustomUnaryInterceptor,
 		),
 		grpc.ChainStreamInterceptor(
@@ -63,7 +71,7 @@ func main() {
 			auth.StreamServerInterceptor(server.Authorize),
 			ratelimit.StreamServerInterceptor(limiter),
 			recovery.StreamServerInterceptor(recoveryOpts...),
-			cache.StreamServerInterceptor(nil),
+			cache.StreamServerInterceptor(rediscache.GenerateRedisKey, cacheTtl),
 			server.CustomStreamInterceptor,
 		),
 	)
