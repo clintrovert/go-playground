@@ -27,9 +27,7 @@ const (
 	httpAddr   = ":8088"
 )
 
-var (
-	cacheTtl = time.Hour
-)
+var cacheTtl = time.Hour
 
 func main() {
 	metrics := openmetrics.NewRegisteredServerMetrics(
@@ -43,9 +41,7 @@ func main() {
 	recoveryOpts := []recovery.Option{
 		recovery.WithRecoveryHandler(server.Recover),
 	}
-
-	rdb := rediscache.NewRedisCache()
-	cache := server.NewKeyValCacheInterceptor(rdb, logrus.NewEntry(logrus.New()))
+	cache := getCacheInterceptor()
 
 	// Set up the following middlewares on unary/stream requests, (ordering of
 	// these matters to some extent):
@@ -105,4 +101,10 @@ func getDatabase() *database.Queries {
 	}
 
 	return database.New(postgres)
+}
+
+func getCacheInterceptor() *server.CacheInterceptor {
+	rdb := rediscache.NewRedisCache()
+	kvc := server.NewKeyValCacheInterceptor(rdb, logrus.NewEntry(logrus.New()))
+	return kvc
 }
