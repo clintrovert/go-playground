@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/clintrovert/go-playground/internal/server"
-	"github.com/clintrovert/go-playground/pkg/grpc"
+	"github.com/clintrovert/go-playground/pkg/gateway"
 	"github.com/clintrovert/go-playground/pkg/postgres/database"
 	"github.com/clintrovert/go-playground/pkg/rediscache"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
@@ -30,22 +30,22 @@ func main() {
 	}
 	// cache := getCacheInterceptor()
 
-	srv := grpc.NewServer(grpcAddr, httpAddr).
+	apiGateway := gateway.NewServer(grpcAddr, httpAddr).
+		WithDefaultMetrics().
 		WithAuth(server.Authorize).
 		WithRecovery(recoveryOpts).
 		WithRateLimiter(limiter).
-		WithReflection().
-		WithDefaultMetrics()
+		WithGrpcReflection()
 
 	db := getDatabase()
 
 	// Register service RPCs on server
-	server.RegisterUserService(srv.GrpcServer(), db)
-	server.RegisterProductService(srv.GrpcServer(), db)
+	server.RegisterUserService(apiGateway.GrpcServer(), db)
+	server.RegisterProductService(apiGateway.GrpcServer(), db)
 
 	g := &run.Group{}
-	g.Add(srv.ServeGrpc())
-	g.Add(srv.ServeHttp())
+	g.Add(apiGateway.ServeGrpc())
+	g.Add(apiGateway.ServeHttp())
 
 	if err := g.Run(); err != nil {
 		os.Exit(1)

@@ -1,4 +1,4 @@
-package grpc
+package gateway
 
 import (
 	"log"
@@ -126,7 +126,7 @@ func (srv *Server) WithAuth(af auth.AuthFunc) *Server {
 	return srv
 }
 
-func (srv *Server) WithReflection() *Server {
+func (srv *Server) WithGrpcReflection() *Server {
 	srv.reflectionEnabled = true
 	return srv
 }
