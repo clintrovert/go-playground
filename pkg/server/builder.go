@@ -1,8 +1,6 @@
-package gateway
+package server
 
 import (
-	"log"
-	"net"
 	"net/http"
 
 	openmetrics "github.com/grpc-ecosystem/go-grpc-middleware/providers/openmetrics/v2"
@@ -10,7 +8,6 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/ratelimit"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
@@ -20,7 +17,7 @@ const (
 	metricsEndpoint = "/metrics"
 )
 
-type Server struct {
+type Builder struct {
 	grpcAddr   string
 	httpAddr   string
 	grpcServer *grpc.Server
@@ -39,8 +36,8 @@ type Server struct {
 	customMetricsEnabled  bool
 }
 
-func NewServer(grpcAddr, httpAddr string) *Server {
-	return &Server{
+func NewBuilder(grpcAddr, httpAddr string) *Builder {
+	return &Builder{
 		grpcAddr:              grpcAddr,
 		httpAddr:              httpAddr,
 		defaultMetricsEnabled: false,
@@ -52,7 +49,7 @@ func NewServer(grpcAddr, httpAddr string) *Server {
 	}
 }
 
-func (srv *Server) WithDefaultMetrics() *Server {
+func (srv *Builder) WithDefaultMetrics() *Builder {
 	if srv.customMetricsEnabled {
 		panic("cannot only use default metrics or custom metrics")
 	}
@@ -78,7 +75,7 @@ func (srv *Server) WithDefaultMetrics() *Server {
 	return srv
 }
 
-func (srv *Server) WithCustomMetrics(registerer prometheus.Registerer) *Server {
+func (srv *Builder) WithCustomMetrics(registerer prometheus.Registerer) *Builder {
 	if srv.defaultMetricsEnabled {
 		panic("cannot only use default metrics or custom metrics")
 	}
@@ -104,7 +101,7 @@ func (srv *Server) WithCustomMetrics(registerer prometheus.Registerer) *Server {
 	return srv
 }
 
-func (srv *Server) WithRateLimiter(limiter ratelimit.Limiter) *Server {
+func (srv *Builder) WithRateLimiter(limiter ratelimit.Limiter) *Builder {
 	srv.unaryInterceptors = append(
 		srv.unaryInterceptors,
 		ratelimit.UnaryServerInterceptor(limiter),
@@ -117,7 +114,7 @@ func (srv *Server) WithRateLimiter(limiter ratelimit.Limiter) *Server {
 	return srv
 }
 
-func (srv *Server) WithAuth(af auth.AuthFunc) *Server {
+func (srv *Builder) WithAuth(af auth.AuthFunc) *Builder {
 	srv.unaryInterceptors = append(
 		srv.unaryInterceptors,
 		auth.UnaryServerInterceptor(af),
@@ -126,12 +123,12 @@ func (srv *Server) WithAuth(af auth.AuthFunc) *Server {
 	return srv
 }
 
-func (srv *Server) WithGrpcReflection() *Server {
+func (srv *Builder) WithGrpcReflection() *Builder {
 	srv.reflectionEnabled = true
 	return srv
 }
 
-func (srv *Server) WithRecovery(opts []recovery.Option) *Server {
+func (srv *Builder) WithRecovery(opts []recovery.Option) *Builder {
 	srv.unaryInterceptors = append(
 		srv.unaryInterceptors,
 		recovery.UnaryServerInterceptor(opts...),
@@ -140,7 +137,12 @@ func (srv *Server) WithRecovery(opts []recovery.Option) *Server {
 	return srv
 }
 
-func (srv *Server) GrpcServer() *grpc.Server {
+func (srv *Builder) Build() *Server {
+	// TODO: Implement and validate
+	return nil
+}
+
+func (srv *Builder) generateGrpcServer() *grpc.Server {
 	if srv.grpcServer != nil {
 		return srv.grpcServer
 	}
@@ -162,44 +164,4 @@ func (srv *Server) GrpcServer() *grpc.Server {
 	}
 	srv.grpcServer = grpcServer
 	return grpcServer
-}
-
-func (srv *Server) ServeGrpc() (execute func() error, interrupt func(error)) {
-	if srv.grpcServer == nil {
-		srv.GrpcServer()
-	}
-
-	return func() error {
-			l, err := net.Listen(tcp, srv.grpcAddr)
-			if err != nil {
-				return err
-			}
-			return srv.grpcServer.Serve(l)
-		}, func(err error) {
-			srv.grpcServer.GracefulStop()
-			srv.grpcServer.Stop()
-		}
-}
-
-func (srv *Server) ServeHttp() (execute func() error, interrupt func(error)) {
-	httpSrv := &http.Server{Addr: srv.httpAddr}
-	return func() error {
-			m := http.NewServeMux()
-			if srv.customMetricsEnabled || srv.defaultMetricsEnabled {
-				m.Handle(metricsEndpoint, promhttp.HandlerFor(
-					srv.registry,
-					promhttp.HandlerOpts{
-						EnableOpenMetrics: true,
-					},
-				))
-			}
-
-			httpSrv.Handler = m
-			log.Println("starting http server at " + httpSrv.Addr)
-			return httpSrv.ListenAndServe()
-		}, func(error) {
-			if err := httpSrv.Close(); err != nil {
-				log.Fatalf("failed to close http server: %v", err)
-			}
-		}
 }

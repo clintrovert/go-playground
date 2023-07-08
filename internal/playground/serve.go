@@ -1,4 +1,4 @@
-package server
+package playground
 
 import (
 	"log"
@@ -15,7 +15,7 @@ const (
 	metricsEndpoint = "/metrics"
 )
 
-// ServeGrpc starts a gRPC server on the given address.
+// ServeGrpc starts a gRPC playground on the given address.
 func ServeGrpc(srv *grpc.Server, addr string) (func() error, func(error)) {
 	return func() error {
 			l, err := net.Listen(tcp, addr)
@@ -29,7 +29,7 @@ func ServeGrpc(srv *grpc.Server, addr string) (func() error, func(error)) {
 		}
 }
 
-// ServeHttp starts an HTTP server on the given address and sets up the
+// ServeHttp starts an HTTP playground on the given address and sets up the
 // prometheus metrics endpoint.
 func ServeHttp(
 	httpSrv *http.Server,
@@ -44,11 +44,11 @@ func ServeHttp(
 				},
 			))
 			httpSrv.Handler = m
-			log.Println("starting http server at " + httpSrv.Addr)
+			log.Println("starting http playground at " + httpSrv.Addr)
 			return httpSrv.ListenAndServe()
 		}, func(error) {
 			if err := httpSrv.Close(); err != nil {
-				log.Fatalf("failed to close http server: %v", err)
+				log.Fatalf("failed to close http playground: %v", err)
 			}
 		}
 }

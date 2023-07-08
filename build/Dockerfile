@@ -10,7 +10,7 @@ COPY . .
 
 WORKDIR cmd/server
 
-RUN go build -o server .
+RUN go build -o playground .
 
 FROM alpine
 

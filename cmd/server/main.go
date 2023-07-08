@@ -4,12 +4,11 @@ import (
 	"database/sql"
 	"os"
 
-	"github.com/clintrovert/go-playground/internal/server"
-	"github.com/clintrovert/go-playground/pkg/gateway"
+	"github.com/clintrovert/go-playground/internal/playground"
 	"github.com/clintrovert/go-playground/pkg/postgres/database"
 	"github.com/clintrovert/go-playground/pkg/rediscache"
+	"github.com/clintrovert/go-playground/pkg/server"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
-	"github.com/oklog/run"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,32 +23,27 @@ const (
 
 func main() {
 
-	limiter := server.NewRateLimiter()
+	limiter := playground.NewRateLimiter()
 	recoveryOpts := []recovery.Option{
-		recovery.WithRecoveryHandler(server.Recover),
+		recovery.WithRecoveryHandler(playground.Recover),
 	}
 	// cache := getCacheInterceptor()
 
-	apiGateway := gateway.NewServer(grpcAddr, httpAddr).
+	srv := server.NewBuilder(grpcAddr, httpAddr).
 		WithDefaultMetrics().
-		WithAuth(server.Authorize).
+		WithAuth(playground.Authorize).
 		WithRecovery(recoveryOpts).
 		WithRateLimiter(limiter).
-		WithGrpcReflection()
+		WithGrpcReflection().
+		Build()
 
 	db := getDatabase()
 
-	// Register service RPCs on server
-	server.RegisterUserService(apiGateway.GrpcServer(), db)
-	server.RegisterProductService(apiGateway.GrpcServer(), db)
+	// Register service RPCs on playground
+	playground.RegisterUserService(srv.Grpc, db)
+	playground.RegisterProductService(srv.Grpc, db)
 
-	g := &run.Group{}
-	g.Add(apiGateway.ServeGrpc())
-	g.Add(apiGateway.ServeHttp())
-
-	if err := g.Run(); err != nil {
-		os.Exit(1)
-	}
+	srv.Serve()
 }
 
 func getDatabase() *database.Queries {
@@ -63,9 +57,11 @@ func getDatabase() *database.Queries {
 	return database.New(postgres)
 }
 
-func getCacheInterceptor() *server.CacheInterceptor {
+func getCacheInterceptor() *playground.CacheInterceptor {
 	rdb := rediscache.NewRedisCache()
-	kvc := server.NewKeyValCacheInterceptor(rdb, logrus.NewEntry(logrus.New()))
+	kvc := playground.NewKeyValCacheInterceptor(
+		rdb, logrus.NewEntry(logrus.New()),
+	)
 	return kvc
 }
 
@@ -79,21 +75,21 @@ func getCacheInterceptor() *server.CacheInterceptor {
 // - tracing
 // - caching
 // - custom
-//grpcServer := grpc.NewServer(
+//grpcServer := grpc.NewBuilder(
 //	grpc.ChainUnaryInterceptor(
 //		openmetrics.UnaryServerInterceptor(metrics),
-//		auth.UnaryServerInterceptor(server.Authorize),
+//		auth.UnaryServerInterceptor(playground.Authorize),
 //		ratelimit.UnaryServerInterceptor(limiter),
 //		recovery.UnaryServerInterceptor(recoveryOpts...),
 //		cache.UnaryServerInterceptor(rediscache.GenerateRedisKey, cacheTtl),
-//		server.CustomUnaryInterceptor,
+//		playground.CustomUnaryInterceptor,
 //	),
 //	grpc.ChainStreamInterceptor(
 //		openmetrics.StreamServerInterceptor(metrics),
-//		auth.StreamServerInterceptor(server.Authorize),
+//		auth.StreamServerInterceptor(playground.Authorize),
 //		ratelimit.StreamServerInterceptor(limiter),
 //		recovery.StreamServerInterceptor(recoveryOpts...),
 //		cache.StreamServerInterceptor(rediscache.GenerateRedisKey, cacheTtl),
-//		server.CustomStreamInterceptor,
+//		playground.CustomStreamInterceptor,
 //	),
 //)
