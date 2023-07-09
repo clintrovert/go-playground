@@ -1,4 +1,4 @@
-package playground
+package cache
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 
 var cacheHit = metadata.Pairs("x-cache", "hit")
 
-type generateKeyFunc func(
+type KeyGenerationFunc func(
 	ctx context.Context,
 	req proto.Message,
 	info *grpc.UnaryServerInfo,
@@ -39,7 +39,7 @@ func NewKeyValCacheInterceptor(
 }
 
 func (c *CacheInterceptor) UnaryServerInterceptor(
-	keyFunc generateKeyFunc, ttl time.Duration,
+	keyFunc KeyGenerationFunc, ttl time.Duration,
 ) grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
@@ -71,7 +71,7 @@ func (c *CacheInterceptor) UnaryServerInterceptor(
 }
 
 func (c *CacheInterceptor) StreamServerInterceptor(
-	keyFunc generateKeyFunc, ttl time.Duration,
+	keyFunc KeyGenerationFunc, ttl time.Duration,
 ) grpc.StreamServerInterceptor {
 	return nil
 }

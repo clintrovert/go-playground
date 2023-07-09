@@ -12,11 +12,15 @@ import (
 	"google.golang.org/grpc"
 )
 
+const (
+	metricsEndpoint = "/metrics"
+)
+
 type Server struct {
 	grpcPort, httpPort string
-	Grpc               *grpc.Server
-	Http               *http.Server
-	Metrics            *prometheus.Registry
+	GrpcServer         *grpc.Server
+	HttpServer         *http.Server
+	MetricsRegistry    *prometheus.Registry
 }
 
 func (srv *Server) Serve() {
@@ -35,10 +39,10 @@ func (srv *Server) serveGrpc() (execute func() error, interrupt func(error)) {
 			if err != nil {
 				return err
 			}
-			return srv.Grpc.Serve(l)
+			return srv.GrpcServer.Serve(l)
 		}, func(err error) {
-			srv.Grpc.GracefulStop()
-			srv.Grpc.Stop()
+			srv.GrpcServer.GracefulStop()
+			srv.GrpcServer.Stop()
 		}
 }
 
@@ -46,9 +50,9 @@ func (srv *Server) serveHttp() (execute func() error, interrupt func(error)) {
 	httpSrv := &http.Server{Addr: srv.httpPort}
 	return func() error {
 			m := http.NewServeMux()
-			if srv.Metrics != nil {
+			if srv.MetricsRegistry != nil {
 				m.Handle(metricsEndpoint, promhttp.HandlerFor(
-					srv.Metrics,
+					srv.MetricsRegistry,
 					promhttp.HandlerOpts{
 						EnableOpenMetrics: true,
 					},

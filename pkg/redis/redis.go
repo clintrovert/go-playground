@@ -1,4 +1,4 @@
-package rediscache
+package redis
 
 import (
 	"context"
@@ -8,7 +8,13 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type RedisCache struct {
+type RedisCache struct{}
+
+func GenerateKeyFromRpc(
+	ctx context.Context,
+	req proto.Message,
+	info *grpc.UnaryServerInfo) (string, error) {
+	return "", nil
 }
 
 func NewRedisCache() *RedisCache {

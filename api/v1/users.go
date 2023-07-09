@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/clintrovert/go-playground/api/model"
+	"github.com/clintrovert/go-playground/pkg/cache"
 	database2 "github.com/clintrovert/go-playground/pkg/postgres/database"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
@@ -50,6 +51,7 @@ type UserService struct {
 	model.UnimplementedUserServiceServer
 	db  UserDatabase
 	log *logrus.Logger
+	kvc cache.KeyValCache
 }
 
 // NewUserService creates a new instance of a UserService.

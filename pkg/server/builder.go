@@ -1,8 +1,11 @@
 package server
 
 import (
+	"errors"
 	"net/http"
+	"time"
 
+	"github.com/clintrovert/go-playground/pkg/cache"
 	openmetrics "github.com/grpc-ecosystem/go-grpc-middleware/providers/openmetrics/v2"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/ratelimit"
@@ -13,155 +16,188 @@ import (
 )
 
 const (
-	tcp             = "tcp"
-	metricsEndpoint = "/metrics"
+	tcp = "tcp"
 )
 
+// Builder is a construct
 type Builder struct {
-	grpcAddr   string
-	httpAddr   string
-	grpcServer *grpc.Server
-	httpServer *http.Server
-
-	unaryInterceptors  []grpc.UnaryServerInterceptor
-	streamInterceptors []grpc.StreamServerInterceptor
-	metrics            *openmetrics.ServerMetrics
-	registry           *prometheus.Registry
-
-	defaultMetricsEnabled bool
-	rateLimitEnabled      bool
-	authEnabled           bool
-	recoveryEnabled       bool
-	reflectionEnabled     bool
-	customMetricsEnabled  bool
+	grpcAddr, httpAddr string
+	grpcServer         *grpc.Server
+	httpServer         *http.Server
+	metrics            *metricsInterceptorConfig
+	rateLimit          *rateLimitInterceptorConfig
+	auth               *authInterceptorConfig
+	recovery           *recoveryInterceptorConfig
+	cache              *cacheInterceptorConfig
+	reflectionEnabled  bool
+	validationEnabled  bool
 }
 
+// NewBuilder generates a new instance of a server.Builder.
 func NewBuilder(grpcAddr, httpAddr string) *Builder {
 	return &Builder{
-		grpcAddr:              grpcAddr,
-		httpAddr:              httpAddr,
-		defaultMetricsEnabled: false,
-		customMetricsEnabled:  false,
-		rateLimitEnabled:      false,
-		authEnabled:           false,
-		recoveryEnabled:       false,
-		reflectionEnabled:     false,
+		grpcAddr:          grpcAddr,
+		httpAddr:          httpAddr,
+		reflectionEnabled: false,
 	}
 }
 
-func (srv *Builder) WithDefaultMetrics() *Builder {
-	if srv.customMetricsEnabled {
-		panic("cannot only use default metrics or custom metrics")
-	}
-
-	metrics := openmetrics.NewRegisteredServerMetrics(
-		prometheus.DefaultRegisterer,
-		openmetrics.WithServerHandlingTimeHistogram(),
-	)
-	registry := prometheus.NewRegistry()
-	registry.MustRegister(metrics)
-	srv.registry = registry
-
-	srv.unaryInterceptors = append(
-		srv.unaryInterceptors,
-		openmetrics.UnaryServerInterceptor(metrics),
-	)
-	srv.streamInterceptors = append(
-		srv.streamInterceptors,
-		openmetrics.StreamServerInterceptor(metrics),
-	)
-	srv.defaultMetricsEnabled = true
-
-	return srv
-}
-
-func (srv *Builder) WithCustomMetrics(registerer prometheus.Registerer) *Builder {
-	if srv.defaultMetricsEnabled {
-		panic("cannot only use default metrics or custom metrics")
-	}
-
+// WithMetrics adds metrics interceptors for the supplied registerer.
+func (b *Builder) WithMetrics(registerer prometheus.Registerer) *Builder {
 	metrics := openmetrics.NewRegisteredServerMetrics(
 		registerer,
 		openmetrics.WithServerHandlingTimeHistogram(),
 	)
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(metrics)
-	srv.registry = registry
 
-	srv.unaryInterceptors = append(
-		srv.unaryInterceptors,
-		openmetrics.UnaryServerInterceptor(metrics),
-	)
-	srv.streamInterceptors = append(
-		srv.streamInterceptors,
-		openmetrics.StreamServerInterceptor(metrics),
-	)
-	srv.customMetricsEnabled = true
+	b.metrics = &metricsInterceptorConfig{
+		metrics:  metrics,
+		registry: registry,
+	}
 
-	return srv
+	return b
 }
 
-func (srv *Builder) WithRateLimiter(limiter ratelimit.Limiter) *Builder {
-	srv.unaryInterceptors = append(
-		srv.unaryInterceptors,
-		ratelimit.UnaryServerInterceptor(limiter),
-	)
-	srv.streamInterceptors = append(
-		srv.streamInterceptors,
-		ratelimit.StreamServerInterceptor(limiter),
-	)
-	srv.rateLimitEnabled = true
-	return srv
+func (b *Builder) WithCache(
+	kvc cache.KeyValCache,
+	keyGenFunc cache.KeyGenerationFunc,
+	ttl time.Duration,
+) *Builder {
+	b.cache = &cacheInterceptorConfig{
+		kvc:    kvc,
+		keyGen: keyGenFunc,
+		ttl:    ttl,
+	}
+
+	return b
 }
 
-func (srv *Builder) WithAuth(af auth.AuthFunc) *Builder {
-	srv.unaryInterceptors = append(
-		srv.unaryInterceptors,
-		auth.UnaryServerInterceptor(af),
-	)
-	srv.authEnabled = true
-	return srv
+func (b *Builder) WithRateLimiter(limiter ratelimit.Limiter) *Builder {
+	b.rateLimit = &rateLimitInterceptorConfig{
+		limiter: limiter,
+	}
+
+	return b
 }
 
-func (srv *Builder) WithGrpcReflection() *Builder {
-	srv.reflectionEnabled = true
-	return srv
+func (b *Builder) WithAuth(af auth.AuthFunc) *Builder {
+	b.auth = &authInterceptorConfig{
+		authFunc: af,
+	}
+	return b
 }
 
-func (srv *Builder) WithRecovery(opts []recovery.Option) *Builder {
-	srv.unaryInterceptors = append(
-		srv.unaryInterceptors,
-		recovery.UnaryServerInterceptor(opts...),
-	)
-	srv.recoveryEnabled = true
-	return srv
+func (b *Builder) WithGrpcReflection() *Builder {
+	b.reflectionEnabled = true
+	return b
 }
 
-func (srv *Builder) Build() *Server {
-	// TODO: Implement and validate
-	return nil
+func (b *Builder) WithGrpcValidation() *Builder {
+	b.validationEnabled = true
+	return b
 }
 
-func (srv *Builder) generateGrpcServer() *grpc.Server {
-	if srv.grpcServer != nil {
-		return srv.grpcServer
+func (b *Builder) WithRecovery(opts []recovery.Option) *Builder {
+	b.recovery = &recoveryInterceptorConfig{
+		opts: opts,
+	}
+
+	return b
+}
+
+func (b *Builder) Build() (*Server, error) {
+	grpcServer, err := b.generateGrpcServer()
+	if err != nil {
+		return nil, err
+	}
+
+	httpServer, err := b.generateHttpServer()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Server{
+		GrpcServer: grpcServer,
+		HttpServer: httpServer,
+		grpcPort:   b.grpcAddr,
+		httpPort:   b.httpAddr,
+	}, nil
+}
+
+func (b *Builder) generateHttpServer() (*http.Server, error) {
+	if err := b.validateHttpConfig(); err != nil {
+		return nil, err
+	}
+
+	return &http.Server{
+		Addr: b.httpAddr,
+	}, nil
+}
+
+func (b *Builder) generateGrpcServer() (*grpc.Server, error) {
+	if err := b.validateGrpcConfig(); err != nil {
+		return nil, err
+	}
+
+	var unaryInterceptors []grpc.UnaryServerInterceptor
+	var streamInterceptors []grpc.StreamServerInterceptor
+
+	if b.metrics != nil && b.metrics.registry != nil {
+		unaryInterceptors = append(
+			unaryInterceptors,
+			openmetrics.UnaryServerInterceptor(b.metrics.metrics),
+		)
+
+		streamInterceptors = append(
+			streamInterceptors,
+			openmetrics.StreamServerInterceptor(b.metrics.metrics),
+		)
+	}
+
+	if b.auth != nil && b.auth.authFunc != nil {
+		unaryInterceptors = append(
+			unaryInterceptors,
+			auth.UnaryServerInterceptor(b.auth.authFunc),
+		)
+
+		streamInterceptors = append(
+			streamInterceptors,
+			auth.StreamServerInterceptor(b.auth.authFunc),
+		)
+	}
+
+	if b.rateLimit != nil && b.rateLimit.limiter != nil {
+		unaryInterceptors = append(
+			unaryInterceptors,
+			ratelimit.UnaryServerInterceptor(b.rateLimit.limiter),
+		)
+
+		streamInterceptors = append(
+			streamInterceptors,
+			ratelimit.StreamServerInterceptor(b.rateLimit.limiter),
+		)
 	}
 
 	grpcServer := grpc.NewServer(
-		grpc.ChainUnaryInterceptor(srv.unaryInterceptors...),
-		grpc.ChainStreamInterceptor(srv.streamInterceptors...),
+		grpc.ChainUnaryInterceptor(unaryInterceptors...),
+		grpc.ChainStreamInterceptor(streamInterceptors...),
 	)
 
-	if srv.defaultMetricsEnabled {
-		if srv.metrics == nil {
-			panic("metrics not defined")
-		}
-		srv.metrics.InitializeMetrics(grpcServer)
-	}
-
-	if srv.reflectionEnabled {
+	if b.reflectionEnabled {
 		reflection.Register(grpcServer)
 	}
-	srv.grpcServer = grpcServer
-	return grpcServer
+	b.grpcServer = grpcServer
+	return grpcServer, nil
+}
+
+func (b *Builder) validateGrpcConfig() error {
+	if b.metrics != nil && b.metrics == nil {
+		return errors.New("metrics registry was not defined")
+	}
+	return nil
+}
+
+func (b *Builder) validateHttpConfig() error {
+	return nil
 }

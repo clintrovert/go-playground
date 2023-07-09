@@ -3,13 +3,14 @@ package main
 import (
 	"database/sql"
 	"os"
+	"time"
 
 	"github.com/clintrovert/go-playground/internal/playground"
 	"github.com/clintrovert/go-playground/pkg/postgres/database"
-	"github.com/clintrovert/go-playground/pkg/rediscache"
+	"github.com/clintrovert/go-playground/pkg/redis"
 	"github.com/clintrovert/go-playground/pkg/server"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
-	"github.com/sirupsen/logrus"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
@@ -19,29 +20,35 @@ const (
 	httpAddr   = ":8088"
 )
 
-//var cacheTtl = time.Hour
+var cacheTtl = time.Hour
 
 func main() {
-
 	limiter := playground.NewRateLimiter()
 	recoveryOpts := []recovery.Option{
 		recovery.WithRecoveryHandler(playground.Recover),
 	}
-	// cache := getCacheInterceptor()
+	rdb := redis.NewRedisCache()
 
-	srv := server.NewBuilder(grpcAddr, httpAddr).
-		WithDefaultMetrics().
+	srv, err := server.NewBuilder(grpcAddr, httpAddr).
+		WithMetrics(prometheus.DefaultRegisterer).
+		WithCache(rdb, redis.GenerateKeyFromRpc, cacheTtl).
 		WithAuth(playground.Authorize).
 		WithRecovery(recoveryOpts).
 		WithRateLimiter(limiter).
 		WithGrpcReflection().
 		Build()
 
+	if err != nil {
+		panic(err)
+	}
+
 	db := getDatabase()
 
 	// Register service RPCs on playground
-	playground.RegisterUserService(srv.Grpc, db)
-	playground.RegisterProductService(srv.Grpc, db)
+	playground.RegisterUserService(srv.GrpcServer, db)
+	playground.RegisterProductService(srv.GrpcServer, db)
+
+	srv.HttpServer.ReadHeaderTimeout = time.Second * 2
 
 	srv.Serve()
 }
@@ -55,14 +62,6 @@ func getDatabase() *database.Queries {
 	}
 
 	return database.New(postgres)
-}
-
-func getCacheInterceptor() *playground.CacheInterceptor {
-	rdb := rediscache.NewRedisCache()
-	kvc := playground.NewKeyValCacheInterceptor(
-		rdb, logrus.NewEntry(logrus.New()),
-	)
-	return kvc
 }
 
 // Set up the following middlewares on unary/stream requests, (ordering of
@@ -81,7 +80,7 @@ func getCacheInterceptor() *playground.CacheInterceptor {
 //		auth.UnaryServerInterceptor(playground.Authorize),
 //		ratelimit.UnaryServerInterceptor(limiter),
 //		recovery.UnaryServerInterceptor(recoveryOpts...),
-//		cache.UnaryServerInterceptor(rediscache.GenerateRedisKey, cacheTtl),
+//		cache.UnaryServerInterceptor(redis.GenerateRedisKey, cacheTtl),
 //		playground.CustomUnaryInterceptor,
 //	),
 //	grpc.ChainStreamInterceptor(
@@ -89,7 +88,7 @@ func getCacheInterceptor() *playground.CacheInterceptor {
 //		auth.StreamServerInterceptor(playground.Authorize),
 //		ratelimit.StreamServerInterceptor(limiter),
 //		recovery.StreamServerInterceptor(recoveryOpts...),
-//		cache.StreamServerInterceptor(rediscache.GenerateRedisKey, cacheTtl),
+//		cache.StreamServerInterceptor(redis.GenerateRedisKey, cacheTtl),
 //		playground.CustomStreamInterceptor,
 //	),
 //)
