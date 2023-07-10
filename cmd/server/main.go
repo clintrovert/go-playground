@@ -36,6 +36,7 @@ func main() {
 		WithRecovery(recoveryOpts).
 		WithRateLimiter(limiter).
 		WithGrpcReflection().
+		WithGrpcValidation().
 		Build()
 
 	if err != nil {
