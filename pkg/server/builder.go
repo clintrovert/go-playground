@@ -10,6 +10,7 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/auth"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/ratelimit"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/validator"
 	"github.com/prometheus/client_golang/prometheus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -179,6 +180,18 @@ func (b *Builder) generateGrpcServer() (*grpc.Server, error) {
 		)
 	}
 
+	if b.validationEnabled {
+		unaryInterceptors = append(
+			unaryInterceptors,
+			validator.UnaryServerInterceptor(true),
+		)
+
+		streamInterceptors = append(
+			streamInterceptors,
+			validator.StreamServerInterceptor(true),
+		)
+	}
+
 	grpcServer := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(unaryInterceptors...),
 		grpc.ChainStreamInterceptor(streamInterceptors...),
@@ -187,6 +200,7 @@ func (b *Builder) generateGrpcServer() (*grpc.Server, error) {
 	if b.reflectionEnabled {
 		reflection.Register(grpcServer)
 	}
+
 	b.grpcServer = grpcServer
 	return grpcServer, nil
 }
