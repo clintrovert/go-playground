@@ -39,8 +39,6 @@ grpcurl -H 'authorization: Bearer test' -d '{"id":"<test>","name":"updatedName",
 grpcurl -H 'authorization: Bearer test' -d '{"user_id":"<test>"}' -plaintext localhost:9090 playground.UserService.DeleteUser
 ```
 
-### For Mongo
+### Starting Local Dependencies
 
 `docker-compose up -d`
-
-`mongosh "mongodb://root:example@localhost:27017"`
