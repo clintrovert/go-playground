@@ -30,6 +30,7 @@ type Builder struct {
 	auth               *authInterceptorConfig
 	recovery           *recoveryInterceptorConfig
 	cache              *cacheInterceptorConfig
+	timeout            *timeoutInterceptorConfig
 	reflectionEnabled  bool
 	validationEnabled  bool
 }
@@ -55,6 +56,14 @@ func (b *Builder) WithMetrics(registerer prometheus.Registerer) *Builder {
 	b.metrics = &metricsInterceptorConfig{
 		metrics:  metrics,
 		registry: registry,
+	}
+
+	return b
+}
+
+func (b *Builder) WithTimeout(timeout time.Duration) *Builder {
+	b.timeout = &timeoutInterceptorConfig{
+		timeout: timeout,
 	}
 
 	return b

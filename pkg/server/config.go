@@ -11,6 +11,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+type timeoutInterceptorConfig struct {
+	timeout time.Duration
+}
+
 type rateLimitInterceptorConfig struct {
 	limiter ratelimit.Limiter
 }
