@@ -17,8 +17,6 @@ func Authorize(ctx context.Context) (context.Context, error) {
 	if token != "test" {
 		return nil, status.Errorf(codes.Unauthenticated, "invalid auth token")
 	}
-
-	// NOTE: You can also pass the token in the context for further interceptors
-	// or gRPC service code.
+	
 	return ctx, nil
 }

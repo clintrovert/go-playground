@@ -64,32 +64,3 @@ func getDatabase() *database.Queries {
 
 	return database.New(postgres)
 }
-
-// Set up the following middlewares on unary/stream requests, (ordering of
-// these matters to some extent):
-// - metrics
-// - auth
-// - rate limiting
-// - logging
-// - req validation
-// - tracing
-// - caching
-// - custom
-//grpcServer := grpc.NewBuilder(
-//	grpc.ChainUnaryInterceptor(
-//		openmetrics.UnaryServerInterceptor(metrics),
-//		auth.UnaryServerInterceptor(playground.Authorize),
-//		ratelimit.UnaryServerInterceptor(limiter),
-//		recovery.UnaryServerInterceptor(recoveryOpts...),
-//		cache.UnaryServerInterceptor(redis.GenerateRedisKey, cacheTtl),
-//		playground.CustomUnaryInterceptor,
-//	),
-//	grpc.ChainStreamInterceptor(
-//		openmetrics.StreamServerInterceptor(metrics),
-//		auth.StreamServerInterceptor(playground.Authorize),
-//		ratelimit.StreamServerInterceptor(limiter),
-//		recovery.StreamServerInterceptor(recoveryOpts...),
-//		cache.StreamServerInterceptor(redis.GenerateRedisKey, cacheTtl),
-//		playground.CustomStreamInterceptor,
-//	),
-//)
